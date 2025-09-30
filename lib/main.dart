@@ -1,66 +1,41 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-void main() {
-  runApp(const MyApp());
-}
+import 'app/app.dart';
+import 'core/database/app_database.dart';
+import 'core/security/credential_cipher.dart';
+import 'features/auth/data/datasources/local/auth_local_data_source.dart';
+import 'features/auth/data/datasources/remote/auth_remote_data_source.dart';
+import 'features/auth/data/repositories/auth_repository_impl.dart';
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
 
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+  const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
+  const supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
+
+  if (supabaseUrl.isEmpty || supabaseAnonKey.isEmpty) {
+    throw Exception(
+      'Supabase credentials are missing. Provide SUPABASE_URL and SUPABASE_ANON_KEY using --dart-define at build/run time.',
     );
   }
-}
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
+  await Supabase.initialize(
+    url: supabaseUrl,
+    anonKey: supabaseAnonKey,
+  );
 
-  final String title;
+  final supabaseClient = Supabase.instance.client;
+  final database = AppDatabase();
+  final credentialCipher = CredentialCipher();
 
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
+  final authRepository = AuthRepositoryImpl(
+    remoteDataSource: AuthRemoteDataSource(supabaseClient),
+    localDataSource: AuthLocalDataSource(
+      database: database,
+      credentialCipher: credentialCipher,
+    ),
+  );
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      _counter++;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(widget.title),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ),
-    );
-  }
+  runApp(App(authRepository: authRepository));
 }

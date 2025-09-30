@@ -1,16 +1,47 @@
-# market_app
+# Market App
 
-A new Flutter project about a maketplace.
+A simple market application scaffold using Flutter, Clean Architecture, and BLoC.
 
-## Getting Started
+## What’s Included
+- Clean architecture directory structure (core, app, features).
+- Authentication flow using flutter_bloc.
+- Login page with email/password form and basic validation.
+- Market main page (placeholder list of products) with logout.
 
-This project is a starting point for a Flutter application.
+## Directory Structure
+```
+lib/
+  app/
+    app.dart                # App widget, routing, providers
+  core/
+    constants/
+      app_constants.dart    # Global constants
+  features/
+    auth/
+      data/
+        auth_repository.dart
+      domain/               # (reserved for entities/usecases)
+      presentation/
+        bloc/
+          auth_bloc.dart
+          auth_event.dart
+          auth_state.dart
+        pages/
+          login_page.dart
+    market/
+      data/                 # (reserved)
+      domain/               # (reserved)
+      presentation/
+        pages/
+          market_home_page.dart
+```
 
-A few resources to get you started if this is your first Flutter project:
+## Run
+1. Get packages:
+   flutter pub get
+2. Run the app:
+   flutter run
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Notes
+- The AuthRepository is a fake implementation that accepts any non-empty email and password.
+- State management uses flutter_bloc with an AuthBloc managing login/logout.
