@@ -6,7 +6,8 @@ import 'package:market_app/features/auth/domain/usecases/logout_use_case.dart';
 import 'package:market_app/features/auth/domain/usecases/restore_session_use_case.dart';
 import 'package:market_app/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:market_app/features/auth/presentation/pages/login_page.dart';
-import 'package:market_app/features/market/presentation/pages/market_home_page.dart';
+
+import '../features/products/presentation/pages/market_home_page.dart';
 
 class App extends StatelessWidget {
   App({
