@@ -26,10 +26,12 @@ class _LoginPageState extends State<LoginPage> {
 
   void _submit() {
     if (_formKey.currentState!.validate()) {
-      context.read<AuthBloc>().add(LoginSubmitted(
-            email: _emailController.text.trim(),
-            password: _passwordController.text,
-          ));
+      context.read<AuthBloc>().add(
+        LoginSubmitted(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+        ),
+      );
     }
   }
 
@@ -42,9 +44,7 @@ class _LoginPageState extends State<LoginPage> {
           if (state is AuthError) {
             ScaffoldMessenger.of(context)
               ..clearSnackBars()
-              ..showSnackBar(
-                SnackBar(content: Text(state.message)),
-              );
+              ..showSnackBar(SnackBar(content: Text(state.message)));
           }
           if (state is AuthAuthenticated) {
             if (state.isOffline) {
@@ -56,9 +56,9 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 );
             }
-            Navigator.of(context).pushReplacementNamed(
-              MarketHomePage.routeName,
-            );
+            Navigator.of(
+              context,
+            ).pushReplacementNamed(MarketHomePage.routeName);
           }
         },
         builder: (context, state) {

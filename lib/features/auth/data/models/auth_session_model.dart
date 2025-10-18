@@ -45,7 +45,10 @@ class AuthSessionModel extends AuthSession {
     if (seconds == null) {
       return null;
     }
-    return DateTime.fromMillisecondsSinceEpoch(seconds * 1000, isUtc: true).toLocal();
+    return DateTime.fromMillisecondsSinceEpoch(
+      seconds * 1000,
+      isUtc: true,
+    ).toLocal();
   }
 }
 

@@ -24,12 +24,14 @@ class AuthAuthenticated extends AuthState {
 
   @override
   List<Object?> get props => [
-        session.user.id,
-        session.accessToken,
-        session.refreshToken,
-        session.expiresAt,
-        session.fromCache,
-      ];
+    session.user.id,
+    session.user.role,
+    session.user.sellerId,
+    session.accessToken,
+    session.refreshToken,
+    session.expiresAt,
+    session.fromCache,
+  ];
 }
 
 class AuthError extends AuthState {

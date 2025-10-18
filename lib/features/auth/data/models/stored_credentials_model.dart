@@ -6,6 +6,7 @@ import 'package:market_app/core/database/app_database.dart';
 import 'package:market_app/core/security/credential_cipher.dart';
 import 'package:market_app/features/auth/data/models/auth_session_model.dart';
 import 'package:market_app/features/auth/data/models/auth_user_model.dart';
+import 'package:market_app/features/auth/domain/entities/auth_user.dart';
 
 class StoredCredentialsModel {
   const StoredCredentialsModel({
@@ -19,6 +20,8 @@ class StoredCredentialsModel {
     this.encryptedRefreshToken,
     this.expiresAt,
     this.metadata,
+    this.role = UserRole.customer,
+    this.sellerId,
   });
 
   final String userId;
@@ -31,6 +34,8 @@ class StoredCredentialsModel {
   final int? expiresAt;
   final Map<String, dynamic>? metadata;
   final DateTime updatedAt;
+  final UserRole role;
+  final String? sellerId;
 
   factory StoredCredentialsModel.fromTable(AuthCredentialsTableData data) {
     return StoredCredentialsModel(
@@ -46,6 +51,8 @@ class StoredCredentialsModel {
           ? jsonDecode(data.jsonUserMetadata!) as Map<String, dynamic>
           : null,
       updatedAt: data.updatedAt,
+      role: userRoleFromString(data.role),
+      sellerId: data.sellerId,
     );
   }
 
@@ -66,9 +73,9 @@ class StoredCredentialsModel {
       encryptedAccessToken: Value(encryptedAccessToken),
       encryptedRefreshToken: Value(encryptedRefreshToken),
       expiresAt: Value(expiresAt),
-      jsonUserMetadata: Value(
-        metadata != null ? jsonEncode(metadata) : null,
-      ),
+      jsonUserMetadata: Value(metadata != null ? jsonEncode(metadata) : null),
+      role: Value(role.label),
+      sellerId: Value(sellerId),
       updatedAt: Value(updatedAt ?? DateTime.now()),
     );
   }
@@ -83,6 +90,8 @@ class StoredCredentialsModel {
       email: email,
       displayName: displayName,
       metadata: metadata,
+      role: role,
+      sellerId: sellerId,
     );
     return AuthSessionModel(
       fromCache: true,
@@ -90,7 +99,10 @@ class StoredCredentialsModel {
       accessToken: accessToken,
       refreshToken: refreshToken,
       expiresAt: expiresAt != null
-          ? DateTime.fromMillisecondsSinceEpoch(expiresAt!, isUtc: true).toLocal()
+          ? DateTime.fromMillisecondsSinceEpoch(
+              expiresAt!,
+              isUtc: true,
+            ).toLocal()
           : null,
     );
   }

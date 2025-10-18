@@ -14,7 +14,7 @@ class PasswordHash {
 
 class CredentialCipher {
   CredentialCipher({FlutterSecureStorage? secureStorage})
-      : _secureStorage = secureStorage ?? const FlutterSecureStorage();
+    : _secureStorage = secureStorage ?? const FlutterSecureStorage();
 
   static const _encryptionKeyStorageKey = 'auth_encryption_key';
   static final _cipher = AesGcm.with256bits();
@@ -73,15 +73,8 @@ class CredentialCipher {
     final nonce = base64Decode(map['n'] as String);
     final cipherText = base64Decode(map['c'] as String);
     final mac = Mac(base64Decode(map['m'] as String));
-    final secretBox = SecretBox(
-      cipherText,
-      nonce: nonce,
-      mac: mac,
-    );
-    final clearBytes = await _cipher.decrypt(
-      secretBox,
-      secretKey: key,
-    );
+    final secretBox = SecretBox(cipherText, nonce: nonce, mac: mac);
+    final clearBytes = await _cipher.decrypt(secretBox, secretKey: key);
     return utf8.decode(clearBytes);
   }
 

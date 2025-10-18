@@ -6,13 +6,14 @@ import 'package:market_app/core/database/app_database.dart';
 import 'package:market_app/core/security/credential_cipher.dart';
 import 'package:market_app/features/auth/data/models/auth_session_model.dart';
 import 'package:market_app/features/auth/data/models/stored_credentials_model.dart';
+import 'package:market_app/features/auth/domain/entities/auth_user.dart';
 
 class AuthLocalDataSource {
   AuthLocalDataSource({
     required AppDatabase database,
     required CredentialCipher credentialCipher,
-  })  : _database = database,
-        _cipher = credentialCipher;
+  }) : _database = database,
+       _cipher = credentialCipher;
 
   final AppDatabase _database;
   final CredentialCipher _cipher;
@@ -37,8 +38,12 @@ class AuthLocalDataSource {
       encryptedRefreshToken: Value(encryptedRefresh),
       expiresAt: Value(session.expiresAt?.toUtc().millisecondsSinceEpoch),
       jsonUserMetadata: Value(
-        session.user.metadata != null ? jsonEncode(session.user.metadata) : null,
+        session.user.metadata != null
+            ? jsonEncode(session.user.metadata)
+            : null,
       ),
+      role: Value(session.user.role.label),
+      sellerId: Value(session.user.sellerId),
       updatedAt: Value(DateTime.now().toUtc()),
     );
 
