@@ -88,6 +88,7 @@ class EmployeesTable extends Table {
   TextColumn get lastName => text().nullable()();
   TextColumn get email => text().nullable()();
   TextColumn get phone => text().nullable()();
+  TextColumn get authUserId => text().nullable()();
   TextColumn get role => text()();
   TextColumn get locationId => text().nullable().references(InventoryLocationsTable, #id)();
   TextColumn get locationType => text().nullable()();
@@ -221,7 +222,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -256,6 +257,9 @@ class AppDatabase extends _$AppDatabase {
         await this.customStatement('ALTER TABLE purchase_headers_table ADD COLUMN synced_at TIMESTAMP NULL');
         await this.customStatement('ALTER TABLE sales_headers_table ADD COLUMN synced_at TIMESTAMP NULL');
         await this.customStatement('ALTER TABLE transfer_headers_table ADD COLUMN synced_at TIMESTAMP NULL');
+      }
+      if (from < 8) {
+        await m.addColumn(employeesTable, employeesTable.authUserId);
       }
     },
   );

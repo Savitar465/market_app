@@ -7,6 +7,7 @@ class Employee extends Equatable {
     this.lastName,
     this.email,
     this.phone,
+    this.authUserId,
     required this.role,
     this.locationId,
     this.locationType,
@@ -22,6 +23,7 @@ class Employee extends Equatable {
   final String? lastName;
   final String? email;
   final String? phone;
+  final String? authUserId;
   final String role;
   final String? locationId;
   final String? locationType;
@@ -31,10 +33,10 @@ class Employee extends Equatable {
   final DateTime? updatedAt;
   final DateTime? syncedAt;
 
-  String get displayName =>
-      [firstName, if (lastName != null && lastName!.isNotEmpty) lastName]
-          .join(' ')
-          .trim();
+  String get displayName => [
+    firstName,
+    if (lastName != null && lastName!.isNotEmpty) lastName,
+  ].join(' ').trim();
 
   Employee copyWith({
     String? id,
@@ -42,6 +44,7 @@ class Employee extends Equatable {
     String? lastName,
     String? email,
     String? phone,
+    String? authUserId,
     String? role,
     String? locationId,
     String? locationType,
@@ -57,6 +60,7 @@ class Employee extends Equatable {
       lastName: lastName ?? this.lastName,
       email: email ?? this.email,
       phone: phone ?? this.phone,
+      authUserId: authUserId ?? this.authUserId,
       role: role ?? this.role,
       locationId: locationId ?? this.locationId,
       locationType: locationType ?? this.locationType,
@@ -70,18 +74,19 @@ class Employee extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        firstName,
-        lastName,
-        email,
-        phone,
-        role,
-        locationId,
-        locationType,
-        isActive,
-        hiredAt,
-        createdAt,
-        updatedAt,
-        syncedAt,
-      ];
+    id,
+    firstName,
+    lastName,
+    email,
+    phone,
+    authUserId,
+    role,
+    locationId,
+    locationType,
+    isActive,
+    hiredAt,
+    createdAt,
+    updatedAt,
+    syncedAt,
+  ];
 }

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:market_app/features/auth/domain/entities/auth_session.dart';
+import 'package:market_app/features/inventory/domain/entities/employee.dart';
+import 'package:market_app/features/inventory/domain/entities/inventory_location.dart';
 import 'package:market_app/features/products/domain/entities/product.dart';
 import 'package:market_app/features/products/domain/entities/seller.dart';
 import 'package:market_app/features/products/presentation/bloc/product_catalog_cubit.dart';
@@ -13,11 +15,17 @@ class SellerProductsPage extends StatefulWidget {
     required this.session,
     required this.seller,
     required this.onReloadSeller,
+    this.employee,
+    this.location,
+    this.contextError,
   });
 
   final AuthSession session;
   final Seller seller;
   final VoidCallback onReloadSeller;
+  final Employee? employee;
+  final InventoryLocation? location;
+  final String? contextError;
 
   @override
   State<SellerProductsPage> createState() => _SellerProductsPageState();
@@ -28,6 +36,9 @@ class _SellerProductsPageState extends State<SellerProductsPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final catalogCubit = context.read<ProductCatalogCubit>();
+    final location = widget.location;
+    final employee = widget.employee;
+    final contextError = widget.contextError;
 
     return BlocListener<ProductEditorCubit, ProductEditorState>(
       listenWhen: (previous, current) =>
@@ -65,6 +76,20 @@ class _SellerProductsPageState extends State<SellerProductsPage> {
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
+              if (location != null)
+                Text(
+                  'Ubicacion: ${location.name}',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              if (employee != null)
+                Text(
+                  'Responsable: ${employee.displayName}',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
             ],
           ),
           actions: [
@@ -98,104 +123,163 @@ class _SellerProductsPageState extends State<SellerProductsPage> {
           icon: const Icon(Icons.add),
           label: const Text('Add product'),
         ),
-        body: BlocBuilder<ProductCatalogCubit, ProductCatalogState>(
-          builder: (context, state) {
-            if (state.isLoading && state.products.isEmpty) {
-              return const Center(child: CircularProgressIndicator());
-            }
 
-            final filteredProducts =
-                state.products
-                    .where(
-                      (product) =>
-                          product.syncStatus != ProductSyncStatus.pendingDelete,
-                    )
-                    .toList()
-                  ..sort((a, b) {
-                    final updatedA =
-                        a.updatedAt ?? a.createdAt ?? DateTime(1970);
-                    final updatedB =
-                        b.updatedAt ?? b.createdAt ?? DateTime(1970);
-                    return updatedB.compareTo(updatedA);
-                  });
-
-            return RefreshIndicator(
-              onRefresh: catalogCubit.refresh,
-              child: ListView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
+        body: Column(
+          children: [
+            if (contextError != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: Card(
+                  color: theme.colorScheme.errorContainer,
+                  child: ListTile(
+                    leading: Icon(
+                      Icons.warning_amber_outlined,
+                      color: theme.colorScheme.onErrorContainer,
+                    ),
+                    title: const Text(
+                      'No se pudo cargar la ubicacion de inventario',
+                    ),
+                    subtitle: Text(contextError),
+                  ),
                 ),
-                children: [
-                  if (state.errorMessage != null)
-                    Card(
-                      color: theme.colorScheme.errorContainer,
-                      child: ListTile(
-                        leading: Icon(
-                          Icons.warning_amber_rounded,
-                          color: theme.colorScheme.onErrorContainer,
-                        ),
-                        title: Text(
-                          state.errorMessage!,
-                          style: TextStyle(
-                            color: theme.colorScheme.onErrorContainer,
-                          ),
-                        ),
-                      ),
-                    ),
-                  if (state.hasPendingChanges)
-                    Card(
-                      color: theme.colorScheme.secondaryContainer,
-                      child: ListTile(
-                        leading: const Icon(Icons.sync_problem_outlined),
-                        title: Text(
-                          'Pending changes will sync when you reconnect.',
-                          style: TextStyle(
-                            color: theme.colorScheme.onSecondaryContainer,
-                          ),
-                        ),
-                        subtitle: Text(
-                          '${state.pendingCount} product(s) require attention',
-                          style: TextStyle(
-                            color: theme.colorScheme.onSecondaryContainer,
-                          ),
-                        ),
-                        trailing: FilledButton(
-                          onPressed: catalogCubit.syncPending,
-                          child: const Text('Sync now'),
-                        ),
-                      ),
-                    ),
-                  if (filteredProducts.isEmpty)
-                    SizedBox(
-                      height: MediaQuery.of(context).size.height * 0.4,
-                      child: Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.inventory_2_outlined, size: 64),
-                            const SizedBox(height: 16),
-                            Text(
-                              'No products yet',
-                              style: theme.textTheme.titleMedium,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Tap “Add product” to start building your catalog.',
-                              style: theme.textTheme.bodyMedium,
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  else
-                    ...filteredProducts.map(_buildProductCard),
-                  const SizedBox(height: 80),
-                ],
               ),
-            );
-          },
+            Builder(
+              builder: (context) {
+                final chips = <Widget>[];
+                if (location != null) {
+                  chips.add(
+                    Chip(
+                      avatar: const Icon(Icons.location_on_outlined, size: 18),
+                      label: Text(
+                        '${location.name} - ${location.type == InventoryLocationType.store ? 'Tienda' : 'Almacen'}',
+                      ),
+                    ),
+                  );
+                }
+                if (employee != null) {
+                  chips.add(
+                    Chip(
+                      avatar: const Icon(Icons.badge_outlined, size: 18),
+                      label: Text(employee.displayName),
+                    ),
+                  );
+                }
+                if (chips.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+                final topPadding = contextError != null ? 8.0 : 16.0;
+                return Padding(
+                  padding: EdgeInsets.fromLTRB(16, topPadding, 16, 0),
+                  child: Wrap(spacing: 8, runSpacing: 8, children: chips),
+                );
+              },
+            ),
+            Expanded(
+              child: BlocBuilder<ProductCatalogCubit, ProductCatalogState>(
+                builder: (context, state) {
+                  if (state.isLoading && state.products.isEmpty) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  final filteredProducts =
+                      state.products
+                          .where(
+                            (product) =>
+                                product.syncStatus !=
+                                ProductSyncStatus.pendingDelete,
+                          )
+                          .toList()
+                        ..sort((a, b) {
+                          final updatedA =
+                              a.updatedAt ?? a.createdAt ?? DateTime(1970);
+                          final updatedB =
+                              b.updatedAt ?? b.createdAt ?? DateTime(1970);
+                          return updatedB.compareTo(updatedA);
+                        });
+
+                  return RefreshIndicator(
+                    onRefresh: catalogCubit.refresh,
+                    child: ListView(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      children: [
+                        if (state.errorMessage != null)
+                          Card(
+                            color: theme.colorScheme.errorContainer,
+                            child: ListTile(
+                              leading: Icon(
+                                Icons.warning_amber_rounded,
+                                color: theme.colorScheme.onErrorContainer,
+                              ),
+                              title: Text(
+                                state.errorMessage!,
+                                style: TextStyle(
+                                  color: theme.colorScheme.onErrorContainer,
+                                ),
+                              ),
+                            ),
+                          ),
+                        if (state.hasPendingChanges)
+                          Card(
+                            color: theme.colorScheme.secondaryContainer,
+                            child: ListTile(
+                              leading: const Icon(Icons.sync_problem_outlined),
+                              title: Text(
+                                'Pending changes will sync when you reconnect.',
+                                style: TextStyle(
+                                  color: theme.colorScheme.onSecondaryContainer,
+                                ),
+                              ),
+                              subtitle: Text(
+                                '${state.pendingCount} product(s) require attention',
+                                style: TextStyle(
+                                  color: theme.colorScheme.onSecondaryContainer,
+                                ),
+                              ),
+                              trailing: FilledButton(
+                                onPressed: catalogCubit.syncPending,
+                                child: const Text('Sync now'),
+                              ),
+                            ),
+                          ),
+                        if (filteredProducts.isEmpty)
+                          SizedBox(
+                            height: MediaQuery.of(context).size.height * 0.4,
+                            child: Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.inventory_2_outlined,
+                                    size: 64,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'No products yet',
+                                    style: theme.textTheme.titleMedium,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Tap "Add product" to start building your catalog.',
+                                    style: theme.textTheme.bodyMedium,
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        else
+                          ...filteredProducts.map(_buildProductCard),
+                        const SizedBox(height: 80),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -209,7 +293,7 @@ class _SellerProductsPageState extends State<SellerProductsPage> {
       if (product.quantity != null) 'Stock: ${product.quantity}',
       if (product.updatedAt != null)
         'Updated ${_formatTimestamp(product.updatedAt!)}',
-    ].join(' · ');
+    ].join(' Â· ');
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 6),
@@ -271,7 +355,7 @@ class _SellerProductsPageState extends State<SellerProductsPage> {
       builder: (context) => AlertDialog(
         title: const Text('Remove product'),
         content: Text(
-          'Are you sure you want to remove “${product.name}”? This action cannot be undone.',
+          'Are you sure you want to remove â${product.name}â? This action cannot be undone.',
         ),
         actions: [
           TextButton(

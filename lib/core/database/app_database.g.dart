@@ -3117,6 +3117,17 @@ class $EmployeesTableTable extends EmployeesTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _authUserIdMeta = const VerificationMeta(
+    'authUserId',
+  );
+  @override
+  late final GeneratedColumn<String> authUserId = GeneratedColumn<String>(
+    'auth_user_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _roleMeta = const VerificationMeta('role');
   @override
   late final GeneratedColumn<String> role = GeneratedColumn<String>(
@@ -3217,6 +3228,7 @@ class $EmployeesTableTable extends EmployeesTable
     lastName,
     email,
     phone,
+    authUserId,
     role,
     locationId,
     locationType,
@@ -3267,6 +3279,15 @@ class $EmployeesTableTable extends EmployeesTable
       context.handle(
         _phoneMeta,
         phone.isAcceptableOrUnknown(data['phone']!, _phoneMeta),
+      );
+    }
+    if (data.containsKey('auth_user_id')) {
+      context.handle(
+        _authUserIdMeta,
+        authUserId.isAcceptableOrUnknown(
+          data['auth_user_id']!,
+          _authUserIdMeta,
+        ),
       );
     }
     if (data.containsKey('role')) {
@@ -3351,6 +3372,10 @@ class $EmployeesTableTable extends EmployeesTable
         DriftSqlType.string,
         data['${effectivePrefix}phone'],
       ),
+      authUserId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}auth_user_id'],
+      ),
       role: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}role'],
@@ -3399,6 +3424,7 @@ class EmployeesTableData extends DataClass
   final String? lastName;
   final String? email;
   final String? phone;
+  final String? authUserId;
   final String role;
   final String? locationId;
   final String? locationType;
@@ -3413,6 +3439,7 @@ class EmployeesTableData extends DataClass
     this.lastName,
     this.email,
     this.phone,
+    this.authUserId,
     required this.role,
     this.locationId,
     this.locationType,
@@ -3435,6 +3462,9 @@ class EmployeesTableData extends DataClass
     }
     if (!nullToAbsent || phone != null) {
       map['phone'] = Variable<String>(phone);
+    }
+    if (!nullToAbsent || authUserId != null) {
+      map['auth_user_id'] = Variable<String>(authUserId);
     }
     map['role'] = Variable<String>(role);
     if (!nullToAbsent || locationId != null) {
@@ -3472,6 +3502,9 @@ class EmployeesTableData extends DataClass
       phone: phone == null && nullToAbsent
           ? const Value.absent()
           : Value(phone),
+      authUserId: authUserId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(authUserId),
       role: Value(role),
       locationId: locationId == null && nullToAbsent
           ? const Value.absent()
@@ -3506,6 +3539,7 @@ class EmployeesTableData extends DataClass
       lastName: serializer.fromJson<String?>(json['lastName']),
       email: serializer.fromJson<String?>(json['email']),
       phone: serializer.fromJson<String?>(json['phone']),
+      authUserId: serializer.fromJson<String?>(json['authUserId']),
       role: serializer.fromJson<String>(json['role']),
       locationId: serializer.fromJson<String?>(json['locationId']),
       locationType: serializer.fromJson<String?>(json['locationType']),
@@ -3525,6 +3559,7 @@ class EmployeesTableData extends DataClass
       'lastName': serializer.toJson<String?>(lastName),
       'email': serializer.toJson<String?>(email),
       'phone': serializer.toJson<String?>(phone),
+      'authUserId': serializer.toJson<String?>(authUserId),
       'role': serializer.toJson<String>(role),
       'locationId': serializer.toJson<String?>(locationId),
       'locationType': serializer.toJson<String?>(locationType),
@@ -3542,6 +3577,7 @@ class EmployeesTableData extends DataClass
     Value<String?> lastName = const Value.absent(),
     Value<String?> email = const Value.absent(),
     Value<String?> phone = const Value.absent(),
+    Value<String?> authUserId = const Value.absent(),
     String? role,
     Value<String?> locationId = const Value.absent(),
     Value<String?> locationType = const Value.absent(),
@@ -3556,6 +3592,7 @@ class EmployeesTableData extends DataClass
     lastName: lastName.present ? lastName.value : this.lastName,
     email: email.present ? email.value : this.email,
     phone: phone.present ? phone.value : this.phone,
+    authUserId: authUserId.present ? authUserId.value : this.authUserId,
     role: role ?? this.role,
     locationId: locationId.present ? locationId.value : this.locationId,
     locationType: locationType.present ? locationType.value : this.locationType,
@@ -3572,6 +3609,9 @@ class EmployeesTableData extends DataClass
       lastName: data.lastName.present ? data.lastName.value : this.lastName,
       email: data.email.present ? data.email.value : this.email,
       phone: data.phone.present ? data.phone.value : this.phone,
+      authUserId: data.authUserId.present
+          ? data.authUserId.value
+          : this.authUserId,
       role: data.role.present ? data.role.value : this.role,
       locationId: data.locationId.present
           ? data.locationId.value
@@ -3595,6 +3635,7 @@ class EmployeesTableData extends DataClass
           ..write('lastName: $lastName, ')
           ..write('email: $email, ')
           ..write('phone: $phone, ')
+          ..write('authUserId: $authUserId, ')
           ..write('role: $role, ')
           ..write('locationId: $locationId, ')
           ..write('locationType: $locationType, ')
@@ -3614,6 +3655,7 @@ class EmployeesTableData extends DataClass
     lastName,
     email,
     phone,
+    authUserId,
     role,
     locationId,
     locationType,
@@ -3632,6 +3674,7 @@ class EmployeesTableData extends DataClass
           other.lastName == this.lastName &&
           other.email == this.email &&
           other.phone == this.phone &&
+          other.authUserId == this.authUserId &&
           other.role == this.role &&
           other.locationId == this.locationId &&
           other.locationType == this.locationType &&
@@ -3648,6 +3691,7 @@ class EmployeesTableCompanion extends UpdateCompanion<EmployeesTableData> {
   final Value<String?> lastName;
   final Value<String?> email;
   final Value<String?> phone;
+  final Value<String?> authUserId;
   final Value<String> role;
   final Value<String?> locationId;
   final Value<String?> locationType;
@@ -3663,6 +3707,7 @@ class EmployeesTableCompanion extends UpdateCompanion<EmployeesTableData> {
     this.lastName = const Value.absent(),
     this.email = const Value.absent(),
     this.phone = const Value.absent(),
+    this.authUserId = const Value.absent(),
     this.role = const Value.absent(),
     this.locationId = const Value.absent(),
     this.locationType = const Value.absent(),
@@ -3679,6 +3724,7 @@ class EmployeesTableCompanion extends UpdateCompanion<EmployeesTableData> {
     this.lastName = const Value.absent(),
     this.email = const Value.absent(),
     this.phone = const Value.absent(),
+    this.authUserId = const Value.absent(),
     required String role,
     this.locationId = const Value.absent(),
     this.locationType = const Value.absent(),
@@ -3697,6 +3743,7 @@ class EmployeesTableCompanion extends UpdateCompanion<EmployeesTableData> {
     Expression<String>? lastName,
     Expression<String>? email,
     Expression<String>? phone,
+    Expression<String>? authUserId,
     Expression<String>? role,
     Expression<String>? locationId,
     Expression<String>? locationType,
@@ -3713,6 +3760,7 @@ class EmployeesTableCompanion extends UpdateCompanion<EmployeesTableData> {
       if (lastName != null) 'last_name': lastName,
       if (email != null) 'email': email,
       if (phone != null) 'phone': phone,
+      if (authUserId != null) 'auth_user_id': authUserId,
       if (role != null) 'role': role,
       if (locationId != null) 'location_id': locationId,
       if (locationType != null) 'location_type': locationType,
@@ -3731,6 +3779,7 @@ class EmployeesTableCompanion extends UpdateCompanion<EmployeesTableData> {
     Value<String?>? lastName,
     Value<String?>? email,
     Value<String?>? phone,
+    Value<String?>? authUserId,
     Value<String>? role,
     Value<String?>? locationId,
     Value<String?>? locationType,
@@ -3747,6 +3796,7 @@ class EmployeesTableCompanion extends UpdateCompanion<EmployeesTableData> {
       lastName: lastName ?? this.lastName,
       email: email ?? this.email,
       phone: phone ?? this.phone,
+      authUserId: authUserId ?? this.authUserId,
       role: role ?? this.role,
       locationId: locationId ?? this.locationId,
       locationType: locationType ?? this.locationType,
@@ -3776,6 +3826,9 @@ class EmployeesTableCompanion extends UpdateCompanion<EmployeesTableData> {
     }
     if (phone.present) {
       map['phone'] = Variable<String>(phone.value);
+    }
+    if (authUserId.present) {
+      map['auth_user_id'] = Variable<String>(authUserId.value);
     }
     if (role.present) {
       map['role'] = Variable<String>(role.value);
@@ -3815,6 +3868,7 @@ class EmployeesTableCompanion extends UpdateCompanion<EmployeesTableData> {
           ..write('lastName: $lastName, ')
           ..write('email: $email, ')
           ..write('phone: $phone, ')
+          ..write('authUserId: $authUserId, ')
           ..write('role: $role, ')
           ..write('locationId: $locationId, ')
           ..write('locationType: $locationType, ')
@@ -5086,6 +5140,17 @@ class $PurchaseHeadersTableTable extends PurchaseHeadersTable
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _syncedAtMeta = const VerificationMeta(
+    'syncedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> syncedAt = GeneratedColumn<DateTime>(
+    'synced_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -5099,6 +5164,7 @@ class $PurchaseHeadersTableTable extends PurchaseHeadersTable
     notes,
     createdAt,
     updatedAt,
+    syncedAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -5198,6 +5264,12 @@ class $PurchaseHeadersTableTable extends PurchaseHeadersTable
         updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
       );
     }
+    if (data.containsKey('synced_at')) {
+      context.handle(
+        _syncedAtMeta,
+        syncedAt.isAcceptableOrUnknown(data['synced_at']!, _syncedAtMeta),
+      );
+    }
     return context;
   }
 
@@ -5254,6 +5326,10 @@ class $PurchaseHeadersTableTable extends PurchaseHeadersTable
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
       ),
+      syncedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}synced_at'],
+      ),
     );
   }
 
@@ -5276,6 +5352,7 @@ class PurchaseHeadersTableData extends DataClass
   final String? notes;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final DateTime? syncedAt;
   const PurchaseHeadersTableData({
     required this.id,
     required this.locationId,
@@ -5288,6 +5365,7 @@ class PurchaseHeadersTableData extends DataClass
     this.notes,
     this.createdAt,
     this.updatedAt,
+    this.syncedAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -5314,6 +5392,9 @@ class PurchaseHeadersTableData extends DataClass
     }
     if (!nullToAbsent || updatedAt != null) {
       map['updated_at'] = Variable<DateTime>(updatedAt);
+    }
+    if (!nullToAbsent || syncedAt != null) {
+      map['synced_at'] = Variable<DateTime>(syncedAt);
     }
     return map;
   }
@@ -5343,6 +5424,9 @@ class PurchaseHeadersTableData extends DataClass
       updatedAt: updatedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(updatedAt),
+      syncedAt: syncedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncedAt),
     );
   }
 
@@ -5365,6 +5449,7 @@ class PurchaseHeadersTableData extends DataClass
       notes: serializer.fromJson<String?>(json['notes']),
       createdAt: serializer.fromJson<DateTime?>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
+      syncedAt: serializer.fromJson<DateTime?>(json['syncedAt']),
     );
   }
   @override
@@ -5382,6 +5467,7 @@ class PurchaseHeadersTableData extends DataClass
       'notes': serializer.toJson<String?>(notes),
       'createdAt': serializer.toJson<DateTime?>(createdAt),
       'updatedAt': serializer.toJson<DateTime?>(updatedAt),
+      'syncedAt': serializer.toJson<DateTime?>(syncedAt),
     };
   }
 
@@ -5397,6 +5483,7 @@ class PurchaseHeadersTableData extends DataClass
     Value<String?> notes = const Value.absent(),
     Value<DateTime?> createdAt = const Value.absent(),
     Value<DateTime?> updatedAt = const Value.absent(),
+    Value<DateTime?> syncedAt = const Value.absent(),
   }) => PurchaseHeadersTableData(
     id: id ?? this.id,
     locationId: locationId ?? this.locationId,
@@ -5413,6 +5500,7 @@ class PurchaseHeadersTableData extends DataClass
     notes: notes.present ? notes.value : this.notes,
     createdAt: createdAt.present ? createdAt.value : this.createdAt,
     updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
+    syncedAt: syncedAt.present ? syncedAt.value : this.syncedAt,
   );
   PurchaseHeadersTableData copyWithCompanion(
     PurchaseHeadersTableCompanion data,
@@ -5441,6 +5529,7 @@ class PurchaseHeadersTableData extends DataClass
       notes: data.notes.present ? data.notes.value : this.notes,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      syncedAt: data.syncedAt.present ? data.syncedAt.value : this.syncedAt,
     );
   }
 
@@ -5457,7 +5546,8 @@ class PurchaseHeadersTableData extends DataClass
           ..write('totalCost: $totalCost, ')
           ..write('notes: $notes, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('syncedAt: $syncedAt')
           ..write(')'))
         .toString();
   }
@@ -5475,6 +5565,7 @@ class PurchaseHeadersTableData extends DataClass
     notes,
     createdAt,
     updatedAt,
+    syncedAt,
   );
   @override
   bool operator ==(Object other) =>
@@ -5490,7 +5581,8 @@ class PurchaseHeadersTableData extends DataClass
           other.totalCost == this.totalCost &&
           other.notes == this.notes &&
           other.createdAt == this.createdAt &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.syncedAt == this.syncedAt);
 }
 
 class PurchaseHeadersTableCompanion
@@ -5506,6 +5598,7 @@ class PurchaseHeadersTableCompanion
   final Value<String?> notes;
   final Value<DateTime?> createdAt;
   final Value<DateTime?> updatedAt;
+  final Value<DateTime?> syncedAt;
   final Value<int> rowid;
   const PurchaseHeadersTableCompanion({
     this.id = const Value.absent(),
@@ -5519,6 +5612,7 @@ class PurchaseHeadersTableCompanion
     this.notes = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.syncedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   PurchaseHeadersTableCompanion.insert({
@@ -5533,6 +5627,7 @@ class PurchaseHeadersTableCompanion
     this.notes = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.syncedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        locationId = Value(locationId),
@@ -5550,6 +5645,7 @@ class PurchaseHeadersTableCompanion
     Expression<String>? notes,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
+    Expression<DateTime>? syncedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -5565,6 +5661,7 @@ class PurchaseHeadersTableCompanion
       if (notes != null) 'notes': notes,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (syncedAt != null) 'synced_at': syncedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -5581,6 +5678,7 @@ class PurchaseHeadersTableCompanion
     Value<String?>? notes,
     Value<DateTime?>? createdAt,
     Value<DateTime?>? updatedAt,
+    Value<DateTime?>? syncedAt,
     Value<int>? rowid,
   }) {
     return PurchaseHeadersTableCompanion(
@@ -5595,6 +5693,7 @@ class PurchaseHeadersTableCompanion
       notes: notes ?? this.notes,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      syncedAt: syncedAt ?? this.syncedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -5637,6 +5736,9 @@ class PurchaseHeadersTableCompanion
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (syncedAt.present) {
+      map['synced_at'] = Variable<DateTime>(syncedAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -5657,6 +5759,7 @@ class PurchaseHeadersTableCompanion
           ..write('notes: $notes, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('syncedAt: $syncedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -6186,6 +6289,17 @@ class $SalesHeadersTableTable extends SalesHeadersTable
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _syncedAtMeta = const VerificationMeta(
+    'syncedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> syncedAt = GeneratedColumn<DateTime>(
+    'synced_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -6198,6 +6312,7 @@ class $SalesHeadersTableTable extends SalesHeadersTable
     notes,
     createdAt,
     updatedAt,
+    syncedAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -6286,6 +6401,12 @@ class $SalesHeadersTableTable extends SalesHeadersTable
         updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
       );
     }
+    if (data.containsKey('synced_at')) {
+      context.handle(
+        _syncedAtMeta,
+        syncedAt.isAcceptableOrUnknown(data['synced_at']!, _syncedAtMeta),
+      );
+    }
     return context;
   }
 
@@ -6335,6 +6456,10 @@ class $SalesHeadersTableTable extends SalesHeadersTable
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
       ),
+      syncedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}synced_at'],
+      ),
     );
   }
 
@@ -6356,6 +6481,7 @@ class SalesHeadersTableData extends DataClass
   final String? notes;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final DateTime? syncedAt;
   const SalesHeadersTableData({
     required this.id,
     required this.storeId,
@@ -6367,6 +6493,7 @@ class SalesHeadersTableData extends DataClass
     this.notes,
     this.createdAt,
     this.updatedAt,
+    this.syncedAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -6392,6 +6519,9 @@ class SalesHeadersTableData extends DataClass
     }
     if (!nullToAbsent || updatedAt != null) {
       map['updated_at'] = Variable<DateTime>(updatedAt);
+    }
+    if (!nullToAbsent || syncedAt != null) {
+      map['synced_at'] = Variable<DateTime>(syncedAt);
     }
     return map;
   }
@@ -6420,6 +6550,9 @@ class SalesHeadersTableData extends DataClass
       updatedAt: updatedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(updatedAt),
+      syncedAt: syncedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncedAt),
     );
   }
 
@@ -6441,6 +6574,7 @@ class SalesHeadersTableData extends DataClass
       notes: serializer.fromJson<String?>(json['notes']),
       createdAt: serializer.fromJson<DateTime?>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
+      syncedAt: serializer.fromJson<DateTime?>(json['syncedAt']),
     );
   }
   @override
@@ -6457,6 +6591,7 @@ class SalesHeadersTableData extends DataClass
       'notes': serializer.toJson<String?>(notes),
       'createdAt': serializer.toJson<DateTime?>(createdAt),
       'updatedAt': serializer.toJson<DateTime?>(updatedAt),
+      'syncedAt': serializer.toJson<DateTime?>(syncedAt),
     };
   }
 
@@ -6471,6 +6606,7 @@ class SalesHeadersTableData extends DataClass
     Value<String?> notes = const Value.absent(),
     Value<DateTime?> createdAt = const Value.absent(),
     Value<DateTime?> updatedAt = const Value.absent(),
+    Value<DateTime?> syncedAt = const Value.absent(),
   }) => SalesHeadersTableData(
     id: id ?? this.id,
     storeId: storeId ?? this.storeId,
@@ -6486,6 +6622,7 @@ class SalesHeadersTableData extends DataClass
     notes: notes.present ? notes.value : this.notes,
     createdAt: createdAt.present ? createdAt.value : this.createdAt,
     updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
+    syncedAt: syncedAt.present ? syncedAt.value : this.syncedAt,
   );
   SalesHeadersTableData copyWithCompanion(SalesHeadersTableCompanion data) {
     return SalesHeadersTableData(
@@ -6507,6 +6644,7 @@ class SalesHeadersTableData extends DataClass
       notes: data.notes.present ? data.notes.value : this.notes,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      syncedAt: data.syncedAt.present ? data.syncedAt.value : this.syncedAt,
     );
   }
 
@@ -6522,7 +6660,8 @@ class SalesHeadersTableData extends DataClass
           ..write('totalAmount: $totalAmount, ')
           ..write('notes: $notes, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('syncedAt: $syncedAt')
           ..write(')'))
         .toString();
   }
@@ -6539,6 +6678,7 @@ class SalesHeadersTableData extends DataClass
     notes,
     createdAt,
     updatedAt,
+    syncedAt,
   );
   @override
   bool operator ==(Object other) =>
@@ -6553,7 +6693,8 @@ class SalesHeadersTableData extends DataClass
           other.totalAmount == this.totalAmount &&
           other.notes == this.notes &&
           other.createdAt == this.createdAt &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.syncedAt == this.syncedAt);
 }
 
 class SalesHeadersTableCompanion
@@ -6568,6 +6709,7 @@ class SalesHeadersTableCompanion
   final Value<String?> notes;
   final Value<DateTime?> createdAt;
   final Value<DateTime?> updatedAt;
+  final Value<DateTime?> syncedAt;
   final Value<int> rowid;
   const SalesHeadersTableCompanion({
     this.id = const Value.absent(),
@@ -6580,6 +6722,7 @@ class SalesHeadersTableCompanion
     this.notes = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.syncedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   SalesHeadersTableCompanion.insert({
@@ -6593,6 +6736,7 @@ class SalesHeadersTableCompanion
     this.notes = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.syncedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        storeId = Value(storeId),
@@ -6608,6 +6752,7 @@ class SalesHeadersTableCompanion
     Expression<String>? notes,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
+    Expression<DateTime>? syncedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -6622,6 +6767,7 @@ class SalesHeadersTableCompanion
       if (notes != null) 'notes': notes,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (syncedAt != null) 'synced_at': syncedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -6637,6 +6783,7 @@ class SalesHeadersTableCompanion
     Value<String?>? notes,
     Value<DateTime?>? createdAt,
     Value<DateTime?>? updatedAt,
+    Value<DateTime?>? syncedAt,
     Value<int>? rowid,
   }) {
     return SalesHeadersTableCompanion(
@@ -6650,6 +6797,7 @@ class SalesHeadersTableCompanion
       notes: notes ?? this.notes,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      syncedAt: syncedAt ?? this.syncedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -6689,6 +6837,9 @@ class SalesHeadersTableCompanion
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (syncedAt.present) {
+      map['synced_at'] = Variable<DateTime>(syncedAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -6708,6 +6859,7 @@ class SalesHeadersTableCompanion
           ..write('notes: $notes, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('syncedAt: $syncedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -7243,6 +7395,17 @@ class $TransferHeadersTableTable extends TransferHeadersTable
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _syncedAtMeta = const VerificationMeta(
+    'syncedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> syncedAt = GeneratedColumn<DateTime>(
+    'synced_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -7256,6 +7419,7 @@ class $TransferHeadersTableTable extends TransferHeadersTable
     notes,
     createdAt,
     updatedAt,
+    syncedAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -7362,6 +7526,12 @@ class $TransferHeadersTableTable extends TransferHeadersTable
         updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
       );
     }
+    if (data.containsKey('synced_at')) {
+      context.handle(
+        _syncedAtMeta,
+        syncedAt.isAcceptableOrUnknown(data['synced_at']!, _syncedAtMeta),
+      );
+    }
     return context;
   }
 
@@ -7418,6 +7588,10 @@ class $TransferHeadersTableTable extends TransferHeadersTable
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
       ),
+      syncedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}synced_at'],
+      ),
     );
   }
 
@@ -7440,6 +7614,7 @@ class TransferHeadersTableData extends DataClass
   final String? notes;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final DateTime? syncedAt;
   const TransferHeadersTableData({
     required this.id,
     required this.originLocationId,
@@ -7452,6 +7627,7 @@ class TransferHeadersTableData extends DataClass
     this.notes,
     this.createdAt,
     this.updatedAt,
+    this.syncedAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -7477,6 +7653,9 @@ class TransferHeadersTableData extends DataClass
     if (!nullToAbsent || updatedAt != null) {
       map['updated_at'] = Variable<DateTime>(updatedAt);
     }
+    if (!nullToAbsent || syncedAt != null) {
+      map['synced_at'] = Variable<DateTime>(syncedAt);
+    }
     return map;
   }
 
@@ -7501,6 +7680,9 @@ class TransferHeadersTableData extends DataClass
       updatedAt: updatedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(updatedAt),
+      syncedAt: syncedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncedAt),
     );
   }
 
@@ -7529,6 +7711,7 @@ class TransferHeadersTableData extends DataClass
       notes: serializer.fromJson<String?>(json['notes']),
       createdAt: serializer.fromJson<DateTime?>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
+      syncedAt: serializer.fromJson<DateTime?>(json['syncedAt']),
     );
   }
   @override
@@ -7550,6 +7733,7 @@ class TransferHeadersTableData extends DataClass
       'notes': serializer.toJson<String?>(notes),
       'createdAt': serializer.toJson<DateTime?>(createdAt),
       'updatedAt': serializer.toJson<DateTime?>(updatedAt),
+      'syncedAt': serializer.toJson<DateTime?>(syncedAt),
     };
   }
 
@@ -7565,6 +7749,7 @@ class TransferHeadersTableData extends DataClass
     Value<String?> notes = const Value.absent(),
     Value<DateTime?> createdAt = const Value.absent(),
     Value<DateTime?> updatedAt = const Value.absent(),
+    Value<DateTime?> syncedAt = const Value.absent(),
   }) => TransferHeadersTableData(
     id: id ?? this.id,
     originLocationId: originLocationId ?? this.originLocationId,
@@ -7580,6 +7765,7 @@ class TransferHeadersTableData extends DataClass
     notes: notes.present ? notes.value : this.notes,
     createdAt: createdAt.present ? createdAt.value : this.createdAt,
     updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
+    syncedAt: syncedAt.present ? syncedAt.value : this.syncedAt,
   );
   TransferHeadersTableData copyWithCompanion(
     TransferHeadersTableCompanion data,
@@ -7608,6 +7794,7 @@ class TransferHeadersTableData extends DataClass
       notes: data.notes.present ? data.notes.value : this.notes,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      syncedAt: data.syncedAt.present ? data.syncedAt.value : this.syncedAt,
     );
   }
 
@@ -7624,7 +7811,8 @@ class TransferHeadersTableData extends DataClass
           ..write('status: $status, ')
           ..write('notes: $notes, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('syncedAt: $syncedAt')
           ..write(')'))
         .toString();
   }
@@ -7642,6 +7830,7 @@ class TransferHeadersTableData extends DataClass
     notes,
     createdAt,
     updatedAt,
+    syncedAt,
   );
   @override
   bool operator ==(Object other) =>
@@ -7657,7 +7846,8 @@ class TransferHeadersTableData extends DataClass
           other.status == this.status &&
           other.notes == this.notes &&
           other.createdAt == this.createdAt &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.syncedAt == this.syncedAt);
 }
 
 class TransferHeadersTableCompanion
@@ -7673,6 +7863,7 @@ class TransferHeadersTableCompanion
   final Value<String?> notes;
   final Value<DateTime?> createdAt;
   final Value<DateTime?> updatedAt;
+  final Value<DateTime?> syncedAt;
   final Value<int> rowid;
   const TransferHeadersTableCompanion({
     this.id = const Value.absent(),
@@ -7686,6 +7877,7 @@ class TransferHeadersTableCompanion
     this.notes = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.syncedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   TransferHeadersTableCompanion.insert({
@@ -7700,6 +7892,7 @@ class TransferHeadersTableCompanion
     this.notes = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.syncedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        originLocationId = Value(originLocationId),
@@ -7719,6 +7912,7 @@ class TransferHeadersTableCompanion
     Expression<String>? notes,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
+    Expression<DateTime>? syncedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -7737,6 +7931,7 @@ class TransferHeadersTableCompanion
       if (notes != null) 'notes': notes,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (syncedAt != null) 'synced_at': syncedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -7753,6 +7948,7 @@ class TransferHeadersTableCompanion
     Value<String?>? notes,
     Value<DateTime?>? createdAt,
     Value<DateTime?>? updatedAt,
+    Value<DateTime?>? syncedAt,
     Value<int>? rowid,
   }) {
     return TransferHeadersTableCompanion(
@@ -7770,6 +7966,7 @@ class TransferHeadersTableCompanion
       notes: notes ?? this.notes,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      syncedAt: syncedAt ?? this.syncedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -7816,6 +8013,9 @@ class TransferHeadersTableCompanion
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (syncedAt.present) {
+      map['synced_at'] = Variable<DateTime>(syncedAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -7836,6 +8036,7 @@ class TransferHeadersTableCompanion
           ..write('notes: $notes, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('syncedAt: $syncedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -9773,6 +9974,7 @@ typedef $$EmployeesTableTableCreateCompanionBuilder =
       Value<String?> lastName,
       Value<String?> email,
       Value<String?> phone,
+      Value<String?> authUserId,
       required String role,
       Value<String?> locationId,
       Value<String?> locationType,
@@ -9790,6 +9992,7 @@ typedef $$EmployeesTableTableUpdateCompanionBuilder =
       Value<String?> lastName,
       Value<String?> email,
       Value<String?> phone,
+      Value<String?> authUserId,
       Value<String> role,
       Value<String?> locationId,
       Value<String?> locationType,
@@ -9868,6 +10071,11 @@ class $$EmployeesTableTableFilterComposer
 
   ColumnFilters<String> get phone => $composableBuilder(
     column: $table.phone,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get authUserId => $composableBuilder(
+    column: $table.authUserId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -9965,6 +10173,11 @@ class $$EmployeesTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get authUserId => $composableBuilder(
+    column: $table.authUserId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get role => $composableBuilder(
     column: $table.role,
     builder: (column) => ColumnOrderings(column),
@@ -10049,6 +10262,11 @@ class $$EmployeesTableTableAnnotationComposer
   GeneratedColumn<String> get phone =>
       $composableBuilder(column: $table.phone, builder: (column) => column);
 
+  GeneratedColumn<String> get authUserId => $composableBuilder(
+    column: $table.authUserId,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get role =>
       $composableBuilder(column: $table.role, builder: (column) => column);
 
@@ -10132,6 +10350,7 @@ class $$EmployeesTableTableTableManager
                 Value<String?> lastName = const Value.absent(),
                 Value<String?> email = const Value.absent(),
                 Value<String?> phone = const Value.absent(),
+                Value<String?> authUserId = const Value.absent(),
                 Value<String> role = const Value.absent(),
                 Value<String?> locationId = const Value.absent(),
                 Value<String?> locationType = const Value.absent(),
@@ -10147,6 +10366,7 @@ class $$EmployeesTableTableTableManager
                 lastName: lastName,
                 email: email,
                 phone: phone,
+                authUserId: authUserId,
                 role: role,
                 locationId: locationId,
                 locationType: locationType,
@@ -10164,6 +10384,7 @@ class $$EmployeesTableTableTableManager
                 Value<String?> lastName = const Value.absent(),
                 Value<String?> email = const Value.absent(),
                 Value<String?> phone = const Value.absent(),
+                Value<String?> authUserId = const Value.absent(),
                 required String role,
                 Value<String?> locationId = const Value.absent(),
                 Value<String?> locationType = const Value.absent(),
@@ -10179,6 +10400,7 @@ class $$EmployeesTableTableTableManager
                 lastName: lastName,
                 email: email,
                 phone: phone,
+                authUserId: authUserId,
                 role: role,
                 locationId: locationId,
                 locationType: locationType,
@@ -10858,6 +11080,7 @@ typedef $$PurchaseHeadersTableTableCreateCompanionBuilder =
       Value<String?> notes,
       Value<DateTime?> createdAt,
       Value<DateTime?> updatedAt,
+      Value<DateTime?> syncedAt,
       Value<int> rowid,
     });
 typedef $$PurchaseHeadersTableTableUpdateCompanionBuilder =
@@ -10873,6 +11096,7 @@ typedef $$PurchaseHeadersTableTableUpdateCompanionBuilder =
       Value<String?> notes,
       Value<DateTime?> createdAt,
       Value<DateTime?> updatedAt,
+      Value<DateTime?> syncedAt,
       Value<int> rowid,
     });
 
@@ -10937,6 +11161,11 @@ class $$PurchaseHeadersTableTableFilterComposer
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -11004,6 +11233,11 @@ class $$PurchaseHeadersTableTableOrderingComposer
     column: $table.updatedAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$PurchaseHeadersTableTableAnnotationComposer
@@ -11059,6 +11293,9 @@ class $$PurchaseHeadersTableTableAnnotationComposer
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get syncedAt =>
+      $composableBuilder(column: $table.syncedAt, builder: (column) => column);
 }
 
 class $$PurchaseHeadersTableTableTableManager
@@ -11115,6 +11352,7 @@ class $$PurchaseHeadersTableTableTableManager
                 Value<String?> notes = const Value.absent(),
                 Value<DateTime?> createdAt = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
+                Value<DateTime?> syncedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PurchaseHeadersTableCompanion(
                 id: id,
@@ -11128,6 +11366,7 @@ class $$PurchaseHeadersTableTableTableManager
                 notes: notes,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                syncedAt: syncedAt,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -11143,6 +11382,7 @@ class $$PurchaseHeadersTableTableTableManager
                 Value<String?> notes = const Value.absent(),
                 Value<DateTime?> createdAt = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
+                Value<DateTime?> syncedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PurchaseHeadersTableCompanion.insert(
                 id: id,
@@ -11156,6 +11396,7 @@ class $$PurchaseHeadersTableTableTableManager
                 notes: notes,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                syncedAt: syncedAt,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -11433,6 +11674,7 @@ typedef $$SalesHeadersTableTableCreateCompanionBuilder =
       Value<String?> notes,
       Value<DateTime?> createdAt,
       Value<DateTime?> updatedAt,
+      Value<DateTime?> syncedAt,
       Value<int> rowid,
     });
 typedef $$SalesHeadersTableTableUpdateCompanionBuilder =
@@ -11447,6 +11689,7 @@ typedef $$SalesHeadersTableTableUpdateCompanionBuilder =
       Value<String?> notes,
       Value<DateTime?> createdAt,
       Value<DateTime?> updatedAt,
+      Value<DateTime?> syncedAt,
       Value<int> rowid,
     });
 
@@ -11506,6 +11749,11 @@ class $$SalesHeadersTableTableFilterComposer
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -11568,6 +11816,11 @@ class $$SalesHeadersTableTableOrderingComposer
     column: $table.updatedAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SalesHeadersTableTableAnnotationComposer
@@ -11616,6 +11869,9 @@ class $$SalesHeadersTableTableAnnotationComposer
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get syncedAt =>
+      $composableBuilder(column: $table.syncedAt, builder: (column) => column);
 }
 
 class $$SalesHeadersTableTableTableManager
@@ -11668,6 +11924,7 @@ class $$SalesHeadersTableTableTableManager
                 Value<String?> notes = const Value.absent(),
                 Value<DateTime?> createdAt = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
+                Value<DateTime?> syncedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SalesHeadersTableCompanion(
                 id: id,
@@ -11680,6 +11937,7 @@ class $$SalesHeadersTableTableTableManager
                 notes: notes,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                syncedAt: syncedAt,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -11694,6 +11952,7 @@ class $$SalesHeadersTableTableTableManager
                 Value<String?> notes = const Value.absent(),
                 Value<DateTime?> createdAt = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
+                Value<DateTime?> syncedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SalesHeadersTableCompanion.insert(
                 id: id,
@@ -11706,6 +11965,7 @@ class $$SalesHeadersTableTableTableManager
                 notes: notes,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                syncedAt: syncedAt,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -11981,6 +12241,7 @@ typedef $$TransferHeadersTableTableCreateCompanionBuilder =
       Value<String?> notes,
       Value<DateTime?> createdAt,
       Value<DateTime?> updatedAt,
+      Value<DateTime?> syncedAt,
       Value<int> rowid,
     });
 typedef $$TransferHeadersTableTableUpdateCompanionBuilder =
@@ -11996,6 +12257,7 @@ typedef $$TransferHeadersTableTableUpdateCompanionBuilder =
       Value<String?> notes,
       Value<DateTime?> createdAt,
       Value<DateTime?> updatedAt,
+      Value<DateTime?> syncedAt,
       Value<int> rowid,
     });
 
@@ -12060,6 +12322,11 @@ class $$TransferHeadersTableTableFilterComposer
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -12127,6 +12394,11 @@ class $$TransferHeadersTableTableOrderingComposer
     column: $table.updatedAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$TransferHeadersTableTableAnnotationComposer
@@ -12182,6 +12454,9 @@ class $$TransferHeadersTableTableAnnotationComposer
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get syncedAt =>
+      $composableBuilder(column: $table.syncedAt, builder: (column) => column);
 }
 
 class $$TransferHeadersTableTableTableManager
@@ -12238,6 +12513,7 @@ class $$TransferHeadersTableTableTableManager
                 Value<String?> notes = const Value.absent(),
                 Value<DateTime?> createdAt = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
+                Value<DateTime?> syncedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TransferHeadersTableCompanion(
                 id: id,
@@ -12251,6 +12527,7 @@ class $$TransferHeadersTableTableTableManager
                 notes: notes,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                syncedAt: syncedAt,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -12266,6 +12543,7 @@ class $$TransferHeadersTableTableTableManager
                 Value<String?> notes = const Value.absent(),
                 Value<DateTime?> createdAt = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
+                Value<DateTime?> syncedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TransferHeadersTableCompanion.insert(
                 id: id,
@@ -12279,6 +12557,7 @@ class $$TransferHeadersTableTableTableManager
                 notes: notes,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                syncedAt: syncedAt,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

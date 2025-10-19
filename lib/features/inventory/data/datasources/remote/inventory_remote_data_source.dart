@@ -57,6 +57,7 @@ class InventoryRemoteDataSource {
       'last_name': model.lastName,
       'email': model.email,
       'phone': model.phone,
+      'auth_user_id': model.authUserId,
       'role': model.role,
       'location_id': model.locationId,
       'location_type': model.locationType,

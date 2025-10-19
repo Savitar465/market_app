@@ -11,6 +11,7 @@ class EmployeeModel extends Equatable {
     this.lastName,
     this.email,
     this.phone,
+    this.authUserId,
     required this.role,
     this.locationId,
     this.locationType,
@@ -26,6 +27,7 @@ class EmployeeModel extends Equatable {
   final String? lastName;
   final String? email;
   final String? phone;
+  final String? authUserId;
   final String role;
   final String? locationId;
   final String? locationType;
@@ -42,6 +44,7 @@ class EmployeeModel extends Equatable {
       lastName: lastName,
       email: email,
       phone: phone,
+      authUserId: authUserId,
       role: role,
       locationId: locationId,
       locationType: locationType,
@@ -60,6 +63,7 @@ class EmployeeModel extends Equatable {
       lastName: Value(lastName),
       email: Value(email),
       phone: Value(phone),
+      authUserId: Value(authUserId),
       role: Value(role),
       locationId: Value(locationId),
       locationType: Value(locationType),
@@ -78,6 +82,7 @@ class EmployeeModel extends Equatable {
       lastName: data.lastName,
       email: data.email,
       phone: data.phone,
+      authUserId: data.authUserId,
       role: data.role,
       locationId: data.locationId,
       locationType: data.locationType,
@@ -96,6 +101,7 @@ class EmployeeModel extends Equatable {
       lastName: entity.lastName,
       email: entity.email,
       phone: entity.phone,
+      authUserId: entity.authUserId,
       role: entity.role,
       locationId: entity.locationId,
       locationType: entity.locationType,
@@ -113,6 +119,7 @@ class EmployeeModel extends Equatable {
     String? lastName,
     String? email,
     String? phone,
+    String? authUserId,
     String? role,
     String? locationId,
     String? locationType,
@@ -128,6 +135,7 @@ class EmployeeModel extends Equatable {
       lastName: lastName ?? this.lastName,
       email: email ?? this.email,
       phone: phone ?? this.phone,
+      authUserId: authUserId ?? this.authUserId,
       role: role ?? this.role,
       locationId: locationId ?? this.locationId,
       locationType: locationType ?? this.locationType,
@@ -141,18 +149,19 @@ class EmployeeModel extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        firstName,
-        lastName,
-        email,
-        phone,
-        role,
-        locationId,
-        locationType,
-        isActive,
-        hiredAt,
-        createdAt,
-        updatedAt,
-        syncedAt,
-      ];
+    id,
+    firstName,
+    lastName,
+    email,
+    phone,
+    authUserId,
+    role,
+    locationId,
+    locationType,
+    isActive,
+    hiredAt,
+    createdAt,
+    updatedAt,
+    syncedAt,
+  ];
 }

@@ -1,7 +1,8 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../auth/domain/entities/auth_session.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../domain/repositories/inventory_repository.dart';
 import '../bloc/employees_cubit.dart';
 import '../bloc/inventory_dashboard_cubit.dart';
@@ -44,9 +45,9 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
         const SnackBar(content: Text('Sincronización completada')),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error de sincronización: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error de sincronización: $e')));
     } finally {
       if (mounted) {
         setState(() {
@@ -63,25 +64,30 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
     return MultiBlocProvider(
       providers: [
         BlocProvider<LocationsCubit>(
-          create: (_) => LocationsCubit(repository: inventoryRepository)..initialize(),
+          create: (_) =>
+              LocationsCubit(repository: inventoryRepository)..initialize(),
         ),
         BlocProvider<EmployeesCubit>(
-          create: (_) => EmployeesCubit(repository: inventoryRepository)..initialize(),
+          create: (_) =>
+              EmployeesCubit(repository: inventoryRepository)..initialize(),
         ),
         BlocProvider<InventoryDashboardCubit>(
           create: (_) =>
-              InventoryDashboardCubit(repository: inventoryRepository)..initialize(),
+              InventoryDashboardCubit(repository: inventoryRepository)
+                ..initialize(),
         ),
         BlocProvider<InventoryStockCubit>(
-          create: (_) => InventoryStockCubit(repository: inventoryRepository)
-            ..refreshGlobal(),
+          create: (_) =>
+              InventoryStockCubit(repository: inventoryRepository)
+                ..refreshGlobal(),
         ),
         BlocProvider<TransactionsCubit>(
           create: (_) => TransactionsCubit(repository: inventoryRepository),
         ),
         BlocProvider<InventoryReportsCubit>(
-          create: (_) => InventoryReportsCubit(repository: inventoryRepository)
-            ..initialize(),
+          create: (_) =>
+              InventoryReportsCubit(repository: inventoryRepository)
+                ..initialize(),
         ),
       ],
       child: Scaffold(
@@ -92,6 +98,12 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
               tooltip: 'Sincronizar con Supabase',
               onPressed: _isSyncing ? null : _syncNow,
               icon: const Icon(Icons.cloud_sync),
+            ),
+            IconButton(
+              tooltip: 'Cerrar sesion',
+              onPressed: () =>
+                  context.read<AuthBloc>().add(const LogoutRequested()),
+              icon: const Icon(Icons.logout),
             ),
           ],
         ),
@@ -143,5 +155,3 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
     );
   }
 }
-
-
