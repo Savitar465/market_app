@@ -142,6 +142,7 @@ class PurchaseHeadersTable extends Table {
   TextColumn get notes => text().nullable()();
   DateTimeColumn get createdAt => dateTime().nullable()();
   DateTimeColumn get updatedAt => dateTime().nullable()();
+  DateTimeColumn get syncedAt => dateTime().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
@@ -170,6 +171,7 @@ class SalesHeadersTable extends Table {
   TextColumn get notes => text().nullable()();
   DateTimeColumn get createdAt => dateTime().nullable()();
   DateTimeColumn get updatedAt => dateTime().nullable()();
+  DateTimeColumn get syncedAt => dateTime().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
@@ -199,6 +201,7 @@ class TransferHeadersTable extends Table {
   TextColumn get notes => text().nullable()();
   DateTimeColumn get createdAt => dateTime().nullable()();
   DateTimeColumn get updatedAt => dateTime().nullable()();
+  DateTimeColumn get syncedAt => dateTime().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
@@ -218,7 +221,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -247,6 +250,12 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(salesItemsTable);
         await m.createTable(transferHeadersTable);
         await m.createTable(transferItemsTable);
+      }
+      if (from < 7) {
+        // Use raw SQL to add synced_at columns to header tables to avoid generator type issues during migration.
+        await this.customStatement('ALTER TABLE purchase_headers_table ADD COLUMN synced_at TIMESTAMP NULL');
+        await this.customStatement('ALTER TABLE sales_headers_table ADD COLUMN synced_at TIMESTAMP NULL');
+        await this.customStatement('ALTER TABLE transfer_headers_table ADD COLUMN synced_at TIMESTAMP NULL');
       }
     },
   );
@@ -468,6 +477,108 @@ class AppDatabase extends _$AppDatabase {
     return query.watch();
   }
 
+  // --- Sync helpers ---
+  Future<List<InventoryLocationsTableData>> fetchUnsyncedLocations() {
+    return (select(inventoryLocationsTable)
+          ..where((tbl) => tbl.syncedAt.isNull() | tbl.syncedAt.isSmallerThan(tbl.updatedAt)))
+        .get();
+  }
+
+  Future<void> markLocationSynced(String id, DateTime ts) {
+    return (update(inventoryLocationsTable)..where((t) => t.id.equals(id))).write(
+      InventoryLocationsTableCompanion(syncedAt: Value(ts)),
+    );
+  }
+
+  Future<DateTime?> fetchMaxLocationsUpdatedAt() async {
+    final row = await customSelect('SELECT MAX(updated_at) as max_ts FROM inventory_locations_table').getSingleOrNull();
+    final val = row?.data['max_ts'] as DateTime?;
+    return val;
+  }
+
+  Future<List<EmployeesTableData>> fetchUnsyncedEmployees() {
+    return (select(employeesTable)
+          ..where((tbl) => tbl.syncedAt.isNull() | tbl.syncedAt.isSmallerThan(tbl.updatedAt)))
+        .get();
+  }
+
+  Future<void> markEmployeeSynced(String id, DateTime ts) {
+    return (update(employeesTable)..where((t) => t.id.equals(id))).write(
+      EmployeesTableCompanion(syncedAt: Value(ts)),
+    );
+  }
+
+  Future<DateTime?> fetchMaxEmployeesUpdatedAt() async {
+    final row = await customSelect('SELECT MAX(updated_at) as max_ts FROM employees_table').getSingleOrNull();
+    final val = row?.data['max_ts'] as DateTime?;
+    return val;
+  }
+
+  Future<List<PurchaseHeadersTableData>> fetchUnsyncedPurchases() {
+    return (select(purchaseHeadersTable)
+          ..where((tbl) => tbl.syncedAt.isNull() | tbl.syncedAt.isSmallerThan(tbl.updatedAt)))
+        .get();
+  }
+
+  Future<List<PurchaseItemsTableData>> fetchPurchaseItems(String purchaseId) {
+    return (select(purchaseItemsTable)..where((t) => t.purchaseId.equals(purchaseId))).get();
+  }
+
+  Future<void> markPurchaseSynced(String id, DateTime ts) async {
+    final tsStr = ts.toUtc().toIso8601String();
+    await customStatement(
+        "UPDATE purchase_headers_table SET synced_at = '$tsStr' WHERE id = '$id'");
+  }
+
+  Future<DateTime?> fetchMaxPurchasesUpdatedAt() async {
+    final row = await customSelect('SELECT MAX(updated_at) as max_ts FROM purchase_headers_table').getSingleOrNull();
+    final val = row?.data['max_ts'] as DateTime?;
+    return val;
+  }
+
+  Future<List<SalesHeadersTableData>> fetchUnsyncedSales() {
+    return (select(salesHeadersTable)
+          ..where((tbl) => tbl.syncedAt.isNull() | tbl.syncedAt.isSmallerThan(tbl.updatedAt)))
+        .get();
+  }
+
+  Future<List<SalesItemsTableData>> fetchSaleItems(String saleId) {
+    return (select(salesItemsTable)..where((t) => t.saleId.equals(saleId))).get();
+  }
+
+  Future<void> markSaleSynced(String id, DateTime ts) async {
+    final tsStr = ts.toUtc().toIso8601String();
+    await customStatement(
+        "UPDATE sales_headers_table SET synced_at = '$tsStr' WHERE id = '$id'");
+  }
+
+  Future<DateTime?> fetchMaxSalesUpdatedAt() async {
+    final row = await customSelect('SELECT MAX(updated_at) as max_ts FROM sales_headers_table').getSingleOrNull();
+    final val = row?.data['max_ts'] as DateTime?;
+    return val;
+  }
+
+  Future<List<TransferHeadersTableData>> fetchUnsyncedTransfers() {
+    return (select(transferHeadersTable)
+          ..where((tbl) => tbl.syncedAt.isNull() | tbl.syncedAt.isSmallerThan(tbl.updatedAt)))
+        .get();
+  }
+
+  Future<List<TransferItemsTableData>> fetchTransferItems(String transferId) {
+    return (select(transferItemsTable)..where((t) => t.transferId.equals(transferId))).get();
+  }
+
+  Future<void> markTransferSynced(String id, DateTime ts) async {
+    final tsStr = ts.toUtc().toIso8601String();
+    await customStatement(
+        "UPDATE transfer_headers_table SET synced_at = '$tsStr' WHERE id = '$id'");
+  }
+
+  Future<DateTime?> fetchMaxTransfersUpdatedAt() async {
+    final row = await customSelect('SELECT MAX(updated_at) as max_ts FROM transfer_headers_table').getSingleOrNull();
+    final val = row?.data['max_ts'] as DateTime?;
+    return val;
+  }
 
 }
 

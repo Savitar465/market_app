@@ -59,4 +59,7 @@ abstract class InventoryRepository {
     String? productId,
     String? locationId,
   });
+
+  // Triggers a best-effort push of pending local changes to Supabase
+  Future<void> syncPendingChanges();
 }

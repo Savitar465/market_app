@@ -138,6 +138,12 @@ class _FakeInventoryRepository implements InventoryRepository {
     String? locationId,
   }) =>
       Stream.value(const []);
+
+  @override
+  Future<void> syncPendingChanges() {
+    // TODO: implement syncPendingChanges
+    throw UnimplementedError();
+  }
 }
 
 void main() {

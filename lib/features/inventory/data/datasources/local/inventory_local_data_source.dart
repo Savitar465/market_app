@@ -613,6 +613,119 @@ SELECT COALESCE(SUM(total_amount), 0) AS total_amount
         .into(_database.inventoryMovementsTable)
         .insert(movement.toCompanion());
   }
+
+  // --- Sync bridging methods (local <-> remote) ---
+  Future<List<InventoryLocationModel>> fetchUnsyncedLocationsForSync() async {
+    final rows = await _database.fetchUnsyncedLocations();
+    return rows.map(InventoryLocationModel.fromTable).toList();
+  }
+
+  Future<void> markLocationSynced(String id, DateTime ts) {
+    return _database.markLocationSynced(id, ts);
+  }
+
+  Future<List<EmployeeModel>> fetchUnsyncedEmployeesForSync() async {
+    final rows = await _database.fetchUnsyncedEmployees();
+    return rows.map(EmployeeModel.fromTable).toList();
+  }
+
+  Future<void> markEmployeeSynced(String id, DateTime ts) {
+    return _database.markEmployeeSynced(id, ts);
+  }
+
+  Future<List<PurchaseModel>> fetchUnsyncedPurchasesForSync() async {
+    final headers = await _database.fetchUnsyncedPurchases();
+    final result = <PurchaseModel>[];
+    for (final h in headers) {
+      final items = await _database.fetchPurchaseItems(h.id);
+      final lines = items
+          .map((i) => PurchaseLineModel(
+                productId: i.productId,
+                quantity: i.quantity,
+                unitCost: i.unitCost,
+                lineTotal: i.totalCost,
+              ))
+          .toList();
+      result.add(PurchaseModel(
+        id: h.id,
+        locationId: h.locationId,
+        locationType: h.locationType,
+        date: h.purchaseDate,
+        referenceCode: h.referenceCode,
+        supplierName: h.supplierName,
+        createdByEmployeeId: h.createdByEmployeeId,
+        notes: h.notes,
+        lines: lines,
+      ));
+    }
+    return result;
+  }
+
+  Future<void> markPurchaseSynced(String id, DateTime ts) {
+    return _database.markPurchaseSynced(id, ts);
+  }
+
+  Future<List<SaleModel>> fetchUnsyncedSalesForSync() async {
+    final headers = await _database.fetchUnsyncedSales();
+    final result = <SaleModel>[];
+    for (final h in headers) {
+      final items = await _database.fetchSaleItems(h.id);
+      final lines = items
+          .map((i) => SaleLineModel(
+                productId: i.productId,
+                quantity: i.quantity,
+                unitPrice: i.unitPrice,
+                lineTotal: i.totalPrice,
+              ))
+          .toList();
+      result.add(SaleModel(
+        id: h.id,
+        storeId: h.storeId,
+        date: h.saleDate,
+        referenceCode: h.referenceCode,
+        customerName: h.customerName,
+        createdByEmployeeId: h.createdByEmployeeId,
+        notes: h.notes,
+        lines: lines,
+      ));
+    }
+    return result;
+  }
+
+  Future<void> markSaleSynced(String id, DateTime ts) {
+    return _database.markSaleSynced(id, ts);
+  }
+
+  Future<List<TransferModel>> fetchUnsyncedTransfersForSync() async {
+    final headers = await _database.fetchUnsyncedTransfers();
+    final result = <TransferModel>[];
+    for (final h in headers) {
+      final items = await _database.fetchTransferItems(h.id);
+      final lines = items
+          .map((i) => TransferLineModel(
+                productId: i.productId,
+                quantity: i.quantity,
+              ))
+          .toList();
+      result.add(TransferModel(
+        id: h.id,
+        originLocationId: h.originLocationId,
+        originLocationType: h.originLocationType,
+        destinationLocationId: h.destinationLocationId,
+        destinationLocationType: h.destinationLocationType,
+        date: h.transferDate,
+        requestedByEmployeeId: h.requestedByEmployeeId,
+        status: h.status,
+        notes: h.notes,
+        lines: lines,
+      ));
+    }
+    return result;
+  }
+
+  Future<void> markTransferSynced(String id, DateTime ts) {
+    return _database.markTransferSynced(id, ts);
+  }
 }
 
 

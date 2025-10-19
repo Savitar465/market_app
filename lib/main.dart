@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app/app.dart';
@@ -7,11 +8,13 @@ import 'core/security/credential_cipher.dart';
 import 'features/auth/data/datasources/local/auth_local_data_source.dart';
 import 'features/auth/data/datasources/remote/auth_remote_data_source.dart';
 import 'features/auth/data/repositories/auth_repository_impl.dart';
+import 'features/inventory/presentation/bloc/locations_cubit.dart';
 import 'features/products/data/datasources/local/product_local_data_source.dart';
 import 'features/products/data/datasources/remote/product_remote_data_source.dart';
 import 'features/products/data/repositories/product_repository_impl.dart';
 import 'features/inventory/data/datasources/local/inventory_local_data_source.dart';
 import 'features/inventory/data/repositories/inventory_repository_impl.dart';
+import 'features/inventory/data/datasources/remote/inventory_remote_data_source.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -46,14 +49,33 @@ Future<void> main() async {
 
   final inventoryRepository = InventoryRepositoryImpl(
     localDataSource: InventoryLocalDataSource(database),
+    remoteDataSource: InventoryRemoteDataSource(supabaseClient),
   );
 
   runApp(
-    App(
-      authRepository: authRepository,
-      productRepository: productRepository,
-      inventoryRepository: inventoryRepository,
-    ),
+      MultiRepositoryProvider(
+        providers: [
+          RepositoryProvider<AuthRepositoryImpl>.value(value: authRepository),
+          RepositoryProvider<ProductRepositoryImpl>.value(value: productRepository),
+          RepositoryProvider<InventoryRepositoryImpl>.value(value: inventoryRepository),
+        ],
+        child: MultiBlocProvider(
+          providers: [
+            BlocProvider<LocationsCubit>(
+              create: (context) => LocationsCubit(
+                repository: context.read<InventoryRepositoryImpl>(),
+              )..initialize(),
+            ),
+
+            // Add other BlocProvider/ Cubit providers here if needed
+          ],
+          child: App(
+            authRepository: authRepository,
+            productRepository: productRepository,
+            inventoryRepository: inventoryRepository,
+          ),
+        ),
+      ),
   );
 }
 

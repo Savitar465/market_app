@@ -27,6 +27,34 @@ class InventoryHomePage extends StatefulWidget {
 
 class _InventoryHomePageState extends State<InventoryHomePage> {
   int _selectedIndex = 0;
+  bool _isSyncing = false;
+
+  Future<void> _syncNow() async {
+    if (_isSyncing) return;
+    setState(() {
+      _isSyncing = true;
+    });
+    final repo = context.read<InventoryRepository>();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Sincronizando con Supabase...')),
+    );
+    try {
+      await repo.syncPendingChanges();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sincronización completada')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error de sincronización: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSyncing = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,6 +87,13 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Gestion de inventario'),
+          actions: [
+            IconButton(
+              tooltip: 'Sincronizar con Supabase',
+              onPressed: _isSyncing ? null : _syncNow,
+              icon: const Icon(Icons.cloud_sync),
+            ),
+          ],
         ),
         body: Row(
           children: [
