@@ -8,8 +8,8 @@ import 'package:market_app/features/inventory/domain/entities/inventory_location
 import 'package:market_app/features/products/domain/entities/product_failure.dart';
 import 'package:market_app/features/products/domain/entities/seller.dart';
 import 'package:market_app/features/products/domain/repositories/product_repository.dart';
-import 'package:market_app/features/products/presentation/bloc/product_catalog_cubit.dart';
 import 'package:market_app/features/products/presentation/bloc/product_editor_cubit.dart';
+import 'package:market_app/features/products/presentation/bloc/seller_inventory_cubit.dart';
 import 'package:market_app/features/products/presentation/pages/market_home_page.dart';
 import 'package:market_app/features/products/presentation/pages/seller_products_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -306,10 +306,9 @@ class _SellerHomePageState extends State<SellerHomePage> {
 
     return MultiBlocProvider(
       providers: [
-        BlocProvider<ProductCatalogCubit>(
+        BlocProvider<SellerInventoryCubit>(
           create: (_) =>
-              ProductCatalogCubit(repository: repository, sellerId: seller.id)
-                ..refresh(),
+              SellerInventoryCubit(supabase: Supabase.instance.client),
         ),
         BlocProvider<ProductEditorCubit>(
           create: (_) =>

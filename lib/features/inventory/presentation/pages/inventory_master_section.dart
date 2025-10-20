@@ -747,15 +747,59 @@ Future<void> _confirmDeleteEmployee(
   }
 }
 
-class _LocationInventorySheet extends StatelessWidget {
+class _LocationInventorySheet extends StatefulWidget {
   const _LocationInventorySheet({required this.location});
 
   final InventoryLocation location;
 
   @override
+  State<_LocationInventorySheet> createState() =>
+      _LocationInventorySheetState();
+}
+
+class _LocationInventorySheetState extends State<_LocationInventorySheet> {
+  late Future<List<_InventoryDisplayRow>> _inventoryFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _inventoryFuture = _fetchInventory();
+  }
+
+  Future<List<_InventoryDisplayRow>> _fetchInventory() async {
+    final supabase = Supabase.instance.client;
+    try {
+      final response = await supabase
+          .schema('market')
+          .from('inventory_stocks')
+          .select(
+            'product_id, quantity_on_hand, quantity_reserved, updated_at, products(name, unit)',
+          )
+          .eq('location_id', widget.location.id)
+          .eq('location_type', widget.location.type.label)
+          .order('updated_at', ascending: false);
+
+      final rows = (response as List).cast<Map<String, dynamic>>();
+      return rows.map(_InventoryDisplayRow.fromRemote).toList();
+    } on PostgrestException catch (error) {
+      throw _InventoryLoadException(error.message);
+    } on TypeError {
+      throw const _InventoryLoadException('Respuesta inesperada de Supabase');
+    } catch (error) {
+      throw _InventoryLoadException(error.toString());
+    }
+  }
+
+  void _refresh() {
+    setState(() {
+      _inventoryFuture = _fetchInventory();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final inventoryRepository = context.read<InventoryRepository>();
-    final typeLabel = location.type == InventoryLocationType.store
+    final repository = context.read<InventoryRepository>();
+    final typeLabel = widget.location.type == InventoryLocationType.store
         ? 'Tienda'
         : 'Almacen';
 
@@ -765,96 +809,117 @@ class _LocationInventorySheet extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: StreamBuilder<List<InventoryStock>>(
-            stream: inventoryRepository.watchInventory(
-              locationId: location.id,
-              locationType: location.type,
+            stream: repository.watchInventory(
+              locationId: widget.location.id,
+              locationType: widget.location.type,
             ),
-            builder: (context, snapshot) {
-              final stocks = snapshot.data ?? const <InventoryStock>[];
-              final isLoading =
-                  snapshot.connectionState == ConnectionState.waiting &&
-                  !snapshot.hasData;
+            builder: (context, localSnapshot) {
+              final localRows = (localSnapshot.data ?? const <InventoryStock>[])
+                  .map(_InventoryDisplayRow.fromLocal)
+                  .toList();
+              return FutureBuilder<List<_InventoryDisplayRow>>(
+                future: _inventoryFuture,
+                builder: (context, snapshot) {
+                  final remoteRows = snapshot.data;
+                  final rows = remoteRows ?? localRows;
+                  final remoteLoading =
+                      snapshot.connectionState == ConnectionState.waiting &&
+                      !snapshot.hasData;
+                  final showSpinner = rows.isEmpty && remoteLoading;
+                  final errorMessage = snapshot.hasError && remoteRows == null
+                      ? snapshot.error.toString()
+                      : null;
 
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              location.name,
-                              style: Theme.of(context).textTheme.titleLarge,
-                            ),
-                            Text(typeLabel),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        tooltip: 'Cerrar',
-                        onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(Icons.close),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  if (snapshot.hasError)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: Text(
-                        'No se pudo cargar el inventario: ${snapshot.error}',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                      ),
-                    ),
-                  if (isLoading)
-                    const Expanded(
-                      child: Center(child: CircularProgressIndicator()),
-                    )
-                  else if (stocks.isEmpty)
-                    const Expanded(
-                      child: Center(
-                        child: Text(
-                          'No hay inventario registrado en esta ubicacion.',
-                        ),
-                      ),
-                    )
-                  else
-                    Expanded(
-                      child: ListView.separated(
-                        itemCount: stocks.length,
-                        separatorBuilder: (context, index) => const Divider(),
-                        itemBuilder: (context, index) {
-                          final stock = stocks[index];
-                          final unit = stock.unit == null || stock.unit!.isEmpty
-                              ? ''
-                              : ' ${stock.unit}';
-                          return ListTile(
-                            title: Text(stock.productName),
-                            subtitle: Column(
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Disponible: ${stock.quantityOnHand.toStringAsFixed(2)}$unit',
+                                  widget.location.name,
+                                  style: Theme.of(context).textTheme.titleLarge,
                                 ),
-                                if (stock.quantityReserved > 0)
-                                  Text(
-                                    'Reservado: ${stock.quantityReserved.toStringAsFixed(2)}$unit',
-                                  ),
-                                if (stock.updatedAt != null)
-                                  Text(
-                                    'Actualizado: ${formatDate(stock.updatedAt!.toLocal())}',
-                                  ),
+                                Text(typeLabel),
                               ],
                             ),
-                          );
-                        },
+                          ),
+                          IconButton(
+                            tooltip: 'Actualizar',
+                            onPressed: remoteLoading ? null : _refresh,
+                            icon: const Icon(Icons.refresh),
+                          ),
+                          IconButton(
+                            tooltip: 'Cerrar',
+                            onPressed: () => Navigator.of(context).pop(),
+                            icon: const Icon(Icons.close),
+                          ),
+                        ],
                       ),
-                    ),
-                ],
+                      const SizedBox(height: 16),
+                      if (errorMessage != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: Text(
+                            'No se pudo cargar el inventario: $errorMessage',
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: Theme.of(context).colorScheme.error,
+                                ),
+                          ),
+                        ),
+                      if (showSpinner)
+                        const Expanded(
+                          child: Center(child: CircularProgressIndicator()),
+                        )
+                      else if (rows.isEmpty)
+                        const Expanded(
+                          child: Center(
+                            child: Text(
+                              'No hay inventario registrado en esta ubicacion.',
+                            ),
+                          ),
+                        )
+                      else
+                        Expanded(
+                          child: ListView.separated(
+                            itemCount: rows.length,
+                            separatorBuilder: (context, index) =>
+                                const Divider(),
+                            itemBuilder: (context, index) {
+                              final row = rows[index];
+                              final unitLabel =
+                                  row.unit == null || row.unit!.isEmpty
+                                  ? ''
+                                  : ' ${row.unit}';
+                              return ListTile(
+                                title: Text(row.productName),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Disponible: ${row.quantityOnHand.toStringAsFixed(2)}$unitLabel',
+                                    ),
+                                    if (row.quantityReserved > 0)
+                                      Text(
+                                        'Reservado: ${row.quantityReserved.toStringAsFixed(2)}$unitLabel',
+                                      ),
+                                    if (row.updatedAt != null)
+                                      Text(
+                                        'Actualizado: ${formatDate(row.updatedAt!.toLocal())}',
+                                      ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                    ],
+                  );
+                },
               );
             },
           ),
@@ -862,6 +927,81 @@ class _LocationInventorySheet extends StatelessWidget {
       ),
     );
   }
+}
+
+class _InventoryDisplayRow {
+  const _InventoryDisplayRow({
+    required this.productName,
+    required this.quantityOnHand,
+    required this.quantityReserved,
+    this.unit,
+    this.updatedAt,
+  });
+
+  final String productName;
+  final double quantityOnHand;
+  final double quantityReserved;
+  final String? unit;
+  final DateTime? updatedAt;
+
+  static _InventoryDisplayRow fromRemote(Map<String, dynamic> row) {
+    final product = row['products'] as Map<String, dynamic>?;
+    return _InventoryDisplayRow(
+      productName: (product?['name'] ?? 'Producto').toString(),
+      unit: _readString(product?['unit']),
+      quantityOnHand: _readDouble(row['quantity_on_hand']),
+      quantityReserved: _readDouble(row['quantity_reserved']),
+      updatedAt: _readDate(row['updated_at']),
+    );
+  }
+
+  static _InventoryDisplayRow fromLocal(InventoryStock stock) {
+    return _InventoryDisplayRow(
+      productName: stock.productName,
+      unit: stock.unit,
+      quantityOnHand: stock.quantityOnHand,
+      quantityReserved: stock.quantityReserved,
+      updatedAt: stock.updatedAt,
+    );
+  }
+}
+
+class _InventoryLoadException implements Exception {
+  const _InventoryLoadException(this.message);
+  final String message;
+  @override
+  String toString() => message;
+}
+
+double _readDouble(dynamic value) {
+  if (value is num) {
+    return value.toDouble();
+  }
+  if (value is String) {
+    final parsed = double.tryParse(value);
+    if (parsed != null) {
+      return parsed;
+    }
+  }
+  return 0;
+}
+
+String? _readString(dynamic value) {
+  if (value == null) {
+    return null;
+  }
+  final stringValue = value.toString().trim();
+  return stringValue.isEmpty ? null : stringValue;
+}
+
+DateTime? _readDate(dynamic value) {
+  if (value is DateTime) {
+    return value.toUtc();
+  }
+  if (value is String && value.isNotEmpty) {
+    return DateTime.tryParse(value)?.toUtc();
+  }
+  return null;
 }
 
 String? _locationNameFor(

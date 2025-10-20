@@ -6,8 +6,8 @@ import 'package:market_app/features/inventory/domain/entities/employee.dart';
 import 'package:market_app/features/inventory/domain/entities/inventory_location.dart';
 import 'package:market_app/features/products/domain/entities/product.dart';
 import 'package:market_app/features/products/domain/entities/seller.dart';
-import 'package:market_app/features/products/presentation/bloc/product_catalog_cubit.dart';
 import 'package:market_app/features/products/presentation/bloc/product_editor_cubit.dart';
+import 'package:market_app/features/products/presentation/bloc/seller_inventory_cubit.dart';
 
 class SellerProductsPage extends StatefulWidget {
   const SellerProductsPage({
@@ -33,9 +33,41 @@ class SellerProductsPage extends StatefulWidget {
 
 class _SellerProductsPageState extends State<SellerProductsPage> {
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _reloadInventory();
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant SellerProductsPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final oldLocationId = oldWidget.location?.id;
+    final newLocationId = widget.location?.id;
+    if (oldLocationId != newLocationId ||
+        widget.seller.id != oldWidget.seller.id) {
+      _reloadInventory();
+    }
+  }
+
+  Future<void> _reloadInventory() async {
+    if (!mounted) {
+      return;
+    }
+    final cubit = context.read<SellerInventoryCubit>();
+    final location = widget.location;
+    if (location == null) {
+      cubit.clear();
+      return;
+    }
+    await cubit.loadForLocation(sellerId: widget.seller.id, location: location);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final catalogCubit = context.read<ProductCatalogCubit>();
     final location = widget.location;
     final employee = widget.employee;
     final contextError = widget.contextError;
@@ -49,7 +81,9 @@ class _SellerProductsPageState extends State<SellerProductsPage> {
           ScaffoldMessenger.of(context)
             ..hideCurrentSnackBar()
             ..showSnackBar(SnackBar(content: Text(state.failure!.message)));
-        } else if (state.lastAction == ProductEditorAction.saved) {
+          return;
+        }
+        if (state.lastAction == ProductEditorAction.saved) {
           final pendingLabel =
               state.draft?.syncStatus == ProductSyncStatus.pendingUpsert
               ? 'Saved locally. Will sync when online.'
@@ -57,10 +91,12 @@ class _SellerProductsPageState extends State<SellerProductsPage> {
           ScaffoldMessenger.of(context)
             ..hideCurrentSnackBar()
             ..showSnackBar(SnackBar(content: Text(pendingLabel)));
+          _reloadInventory();
         } else if (state.lastAction == ProductEditorAction.deleted) {
           ScaffoldMessenger.of(context)
             ..hideCurrentSnackBar()
             ..showSnackBar(const SnackBar(content: Text('Product deleted.')));
+          _reloadInventory();
         }
       },
       child: Scaffold(
@@ -94,14 +130,9 @@ class _SellerProductsPageState extends State<SellerProductsPage> {
           ),
           actions: [
             IconButton(
-              tooltip: 'Pull latest from Supabase',
+              tooltip: 'Actualizar inventario',
               icon: const Icon(Icons.refresh),
-              onPressed: () => catalogCubit.refresh(),
-            ),
-            IconButton(
-              tooltip: 'Sync pending changes',
-              icon: const Icon(Icons.cloud_upload_outlined),
-              onPressed: () => catalogCubit.syncPending(),
+              onPressed: () => _reloadInventory(),
             ),
             PopupMenuButton<String>(
               onSelected: (value) {
@@ -118,11 +149,13 @@ class _SellerProductsPageState extends State<SellerProductsPage> {
             ),
           ],
         ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: () => _openEditor(context),
-          icon: const Icon(Icons.add),
-          label: const Text('Add product'),
-        ),
+        floatingActionButton: location == null
+            ? null
+            : FloatingActionButton.extended(
+                onPressed: () => _openEditor(context),
+                icon: const Icon(Icons.add),
+                label: const Text('Add product'),
+              ),
 
         body: Column(
           children: [
@@ -143,10 +176,16 @@ class _SellerProductsPageState extends State<SellerProductsPage> {
                   ),
                 ),
               ),
-            Builder(
-              builder: (context) {
-                final chips = <Widget>[];
-                if (location != null) {
+            if (location == null)
+              const Expanded(
+                child: Center(
+                  child: Text('No existe una ubicacion asignada a tu cuenta.'),
+                ),
+              )
+            else ...[
+              Builder(
+                builder: (context) {
+                  final chips = <Widget>[];
                   chips.add(
                     Chip(
                       avatar: const Icon(Icons.location_on_outlined, size: 18),
@@ -155,151 +194,112 @@ class _SellerProductsPageState extends State<SellerProductsPage> {
                       ),
                     ),
                   );
-                }
-                if (employee != null) {
-                  chips.add(
-                    Chip(
-                      avatar: const Icon(Icons.badge_outlined, size: 18),
-                      label: Text(employee.displayName),
-                    ),
-                  );
-                }
-                if (chips.isEmpty) {
-                  return const SizedBox.shrink();
-                }
-                final topPadding = contextError != null ? 8.0 : 16.0;
-                return Padding(
-                  padding: EdgeInsets.fromLTRB(16, topPadding, 16, 0),
-                  child: Wrap(spacing: 8, runSpacing: 8, children: chips),
-                );
-              },
-            ),
-            Expanded(
-              child: BlocBuilder<ProductCatalogCubit, ProductCatalogState>(
-                builder: (context, state) {
-                  if (state.isLoading && state.products.isEmpty) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-
-                  final filteredProducts =
-                      state.products
-                          .where(
-                            (product) =>
-                                product.syncStatus !=
-                                ProductSyncStatus.pendingDelete,
-                          )
-                          .toList()
-                        ..sort((a, b) {
-                          final updatedA =
-                              a.updatedAt ?? a.createdAt ?? DateTime(1970);
-                          final updatedB =
-                              b.updatedAt ?? b.createdAt ?? DateTime(1970);
-                          return updatedB.compareTo(updatedA);
-                        });
-
-                  return RefreshIndicator(
-                    onRefresh: catalogCubit.refresh,
-                    child: ListView(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
+                  if (employee != null) {
+                    chips.add(
+                      Chip(
+                        avatar: const Icon(Icons.badge_outlined, size: 18),
+                        label: Text(employee.displayName),
                       ),
-                      children: [
-                        if (state.errorMessage != null)
-                          Card(
-                            color: theme.colorScheme.errorContainer,
-                            child: ListTile(
-                              leading: Icon(
-                                Icons.warning_amber_rounded,
-                                color: theme.colorScheme.onErrorContainer,
-                              ),
-                              title: Text(
-                                state.errorMessage!,
-                                style: TextStyle(
-                                  color: theme.colorScheme.onErrorContainer,
-                                ),
-                              ),
-                            ),
-                          ),
-                        if (state.hasPendingChanges)
-                          Card(
-                            color: theme.colorScheme.secondaryContainer,
-                            child: ListTile(
-                              leading: const Icon(Icons.sync_problem_outlined),
-                              title: Text(
-                                'Pending changes will sync when you reconnect.',
-                                style: TextStyle(
-                                  color: theme.colorScheme.onSecondaryContainer,
-                                ),
-                              ),
-                              subtitle: Text(
-                                '${state.pendingCount} product(s) require attention',
-                                style: TextStyle(
-                                  color: theme.colorScheme.onSecondaryContainer,
-                                ),
-                              ),
-                              trailing: FilledButton(
-                                onPressed: catalogCubit.syncPending,
-                                child: const Text('Sync now'),
-                              ),
-                            ),
-                          ),
-                        if (filteredProducts.isEmpty)
-                          SizedBox(
-                            height: MediaQuery.of(context).size.height * 0.4,
-                            child: Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.inventory_2_outlined,
-                                    size: 64,
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    'No products yet',
-                                    style: theme.textTheme.titleMedium,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'Tap "Add product" to start building your catalog.',
-                                    style: theme.textTheme.bodyMedium,
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          )
-                        else
-                          ...filteredProducts.map(_buildProductCard),
-                        const SizedBox(height: 80),
-                      ],
-                    ),
+                    );
+                  }
+                  final topPadding = contextError != null ? 8.0 : 16.0;
+                  return Padding(
+                    padding: EdgeInsets.fromLTRB(16, topPadding, 16, 0),
+                    child: Wrap(spacing: 8, runSpacing: 8, children: chips),
                   );
                 },
               ),
-            ),
+              Expanded(
+                child: BlocBuilder<SellerInventoryCubit, SellerInventoryState>(
+                  builder: (context, state) {
+                    if (state.isLoading && state.items.isEmpty) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    return RefreshIndicator(
+                      onRefresh: _reloadInventory,
+                      child: ListView(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        children: [
+                          if (state.error != null)
+                            Card(
+                              color: theme.colorScheme.errorContainer,
+                              child: ListTile(
+                                leading: Icon(
+                                  Icons.warning_amber_rounded,
+                                  color: theme.colorScheme.onErrorContainer,
+                                ),
+                                title: Text(
+                                  state.error!,
+                                  style: TextStyle(
+                                    color: theme.colorScheme.onErrorContainer,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          if (state.items.isEmpty)
+                            SizedBox(
+                              height: MediaQuery.of(context).size.height * 0.4,
+                              child: Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.inventory_2_outlined,
+                                      size: 64,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'No products yet',
+                                      style: theme.textTheme.titleMedium,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Tap "Add product" to start building your catalog.',
+                                      style: theme.textTheme.bodyMedium,
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                          else
+                            ...state.items.map(_buildInventoryCard),
+                          const SizedBox(height: 80),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
           ],
         ),
       ),
     );
   }
 
-  Widget _buildProductCard(Product product) {
+  Widget _buildInventoryCard(SellerInventoryItem item) {
     final theme = Theme.of(context);
+    final product = item.product;
     final hasPending = product.syncStatus.isPending;
-    final subtitle = <String>[
+    final details = <String>[
       _formatPrice(product),
-      if (product.quantity != null) 'Stock: ${product.quantity}',
-      if (product.updatedAt != null)
-        'Updated ${_formatTimestamp(product.updatedAt!)}',
-    ].join(' Â· ');
+      'Disponible: ${item.quantityOnHand.toStringAsFixed(2)}',
+      if (item.quantityReserved > 0)
+        'Reservado: ${item.quantityReserved.toStringAsFixed(2)}',
+      if (item.updatedAt != null)
+        'Actualizado ${_formatTimestamp(item.updatedAt!)}',
+    ];
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 6),
       child: ListTile(
         title: Text(product.name),
-        subtitle: Text(subtitle),
+        subtitle: Text(details.join(' · ')),
         leading: CircleAvatar(
           backgroundColor: hasPending
               ? theme.colorScheme.secondaryContainer
@@ -355,7 +355,7 @@ class _SellerProductsPageState extends State<SellerProductsPage> {
       builder: (context) => AlertDialog(
         title: const Text('Remove product'),
         content: Text(
-          'Are you sure you want to remove â${product.name}â? This action cannot be undone.',
+          'Are you sure you want to remove Ã¢Â€Âœ${product.name}Ã¢Â€Â? This action cannot be undone.',
         ),
         actions: [
           TextButton(
