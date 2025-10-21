@@ -773,19 +773,20 @@ class _LocationInventorySheetState extends State<_LocationInventorySheet> {
           .schema('market')
           .from('inventory_stocks')
           .select(
-            'product_id, quantity_on_hand, quantity_reserved, updated_at, products(name, unit)',
+            'product_id, quantity_on_hand, quantity_reserved, updated_at',
           )
           .eq('location_id', widget.location.id)
-          .eq('location_type', widget.location.type.label)
           .order('updated_at', ascending: false);
 
       final rows = (response as List).cast<Map<String, dynamic>>();
       return rows.map(_InventoryDisplayRow.fromRemote).toList();
     } on PostgrestException catch (error) {
+      print(error);
       throw _InventoryLoadException(error.message);
     } on TypeError {
       throw const _InventoryLoadException('Respuesta inesperada de Supabase');
     } catch (error) {
+      print(error);
       throw _InventoryLoadException(error.toString());
     }
   }

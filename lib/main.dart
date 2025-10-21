@@ -50,42 +50,36 @@ Future<void> main() async {
   final inventoryRepository = InventoryRepositoryImpl(
     localDataSource: InventoryLocalDataSource(database),
     remoteDataSource: InventoryRemoteDataSource(supabaseClient),
+    productRepository: productRepository,
   );
 
   runApp(
-      MultiRepositoryProvider(
+    MultiRepositoryProvider(
+      providers: [
+        RepositoryProvider<AuthRepositoryImpl>.value(value: authRepository),
+        RepositoryProvider<ProductRepositoryImpl>.value(
+          value: productRepository,
+        ),
+        RepositoryProvider<InventoryRepositoryImpl>.value(
+          value: inventoryRepository,
+        ),
+      ],
+      child: MultiBlocProvider(
         providers: [
-          RepositoryProvider<AuthRepositoryImpl>.value(value: authRepository),
-          RepositoryProvider<ProductRepositoryImpl>.value(value: productRepository),
-          RepositoryProvider<InventoryRepositoryImpl>.value(value: inventoryRepository),
-        ],
-        child: MultiBlocProvider(
-          providers: [
-            BlocProvider<LocationsCubit>(
-              create: (context) => LocationsCubit(
-                repository: context.read<InventoryRepositoryImpl>(),
-              )..initialize(),
-            ),
-
-            // Add other BlocProvider/ Cubit providers here if needed
-          ],
-          child: App(
-            authRepository: authRepository,
-            productRepository: productRepository,
-            inventoryRepository: inventoryRepository,
+          BlocProvider<LocationsCubit>(
+            create: (context) => LocationsCubit(
+              repository: context.read<InventoryRepositoryImpl>(),
+            )..initialize(),
           ),
+
+          // Add other BlocProvider/ Cubit providers here if needed
+        ],
+        child: App(
+          authRepository: authRepository,
+          productRepository: productRepository,
+          inventoryRepository: inventoryRepository,
         ),
       ),
+    ),
   );
 }
-
-
-
-
-
-
-
-
-
-
-

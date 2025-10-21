@@ -10,6 +10,24 @@ import '../../models/inventory_report_model.dart';
 import '../../models/inventory_stock_model.dart';
 import '../../models/inventory_transaction_model.dart';
 
+class InventoryStockSyncEntry {
+  const InventoryStockSyncEntry({
+    required this.productId,
+    required this.locationId,
+    required this.locationType,
+    required this.quantityOnHand,
+    required this.quantityReserved,
+    required this.updatedAt,
+  });
+
+  final String productId;
+  final String locationId;
+  final String locationType;
+  final double quantityOnHand;
+  final double quantityReserved;
+  final DateTime updatedAt;
+}
+
 class InventoryLocalDataSource {
   InventoryLocalDataSource(this._database);
 
@@ -657,6 +675,69 @@ SELECT COALESCE(SUM(total_amount), 0) AS total_amount
     });
   }
 
+  Future<void> cacheRemoteStocks(List<Map<String, dynamic>> stocks) async {
+    if (stocks.isEmpty) {
+      return;
+    }
+
+    final existing = await _database
+        .select(_database.inventoryStocksTable)
+        .get();
+    final existingMap = <String, InventoryStocksTableData>{
+      for (final row in existing) '${row.productId}|${row.locationId}': row,
+    };
+
+    await _database.transaction(() async {
+      for (final entry in stocks) {
+        final productId = entry['product_id'] as String?;
+        final locationId = entry['location_id'] as String?;
+        if (productId == null || locationId == null) {
+          continue;
+        }
+        final locationType = (entry['location_type'] as String?) ?? 'store';
+        final quantityOnHand = _coerceDouble(entry['quantity_on_hand']);
+        final quantityReserved = _coerceDouble(entry['quantity_reserved']);
+        final remoteUpdatedAt =
+            _coerceDate(entry['updated_at']) ?? DateTime.now().toUtc();
+
+        final key = '$productId|$locationId';
+        final current = existingMap[key]?.updatedAt;
+        if (current != null && remoteUpdatedAt.isBefore(current)) {
+          continue;
+        }
+
+        await _database
+            .into(_database.inventoryStocksTable)
+            .insertOnConflictUpdate(
+              InventoryStocksTableCompanion(
+                productId: Value(productId),
+                locationId: Value(locationId),
+                locationType: Value(locationType),
+                quantityOnHand: Value(quantityOnHand),
+                quantityReserved: Value(quantityReserved),
+                updatedAt: Value(remoteUpdatedAt),
+              ),
+            );
+
+        existingMap[key] = InventoryStocksTableData(
+          productId: productId,
+          locationId: locationId,
+          locationType: locationType,
+          quantityOnHand: quantityOnHand,
+          quantityReserved: quantityReserved,
+          updatedAt: remoteUpdatedAt,
+        );
+      }
+    });
+  }
+
+  Future<List<String>> fetchAllLocationIds() async {
+    final rows = await _database
+        .select(_database.inventoryLocationsTable)
+        .get();
+    return rows.map((row) => row.id).toList();
+  }
+
   Future<DateTime?> fetchLastLocationsSyncedAt() {
     return _database.fetchMaxLocationsSyncedAt();
   }
@@ -681,6 +762,26 @@ SELECT COALESCE(SUM(total_amount), 0) AS total_amount
 
   Future<void> markEmployeeSynced(String id, DateTime ts) {
     return _database.markEmployeeSynced(id, ts);
+  }
+
+  Future<List<InventoryStockSyncEntry>> fetchStocksForSync() async {
+    final rows = await _database
+        .select(_database.inventoryStocksTable)
+        .get();
+    return rows
+        .map(
+          (row) => InventoryStockSyncEntry(
+            productId: row.productId,
+            locationId: row.locationId,
+            locationType: row.locationType,
+            quantityOnHand: row.quantityOnHand,
+            quantityReserved: row.quantityReserved,
+            updatedAt: (row.updatedAt ??
+                    DateTime.fromMillisecondsSinceEpoch(0, isUtc: true))
+                .toUtc(),
+          ),
+        )
+        .toList();
   }
 
   Future<List<PurchaseModel>> fetchUnsyncedPurchasesForSync() async {
@@ -785,5 +886,28 @@ SELECT COALESCE(SUM(total_amount), 0) AS total_amount
 
   Future<void> markTransferSynced(String id, DateTime ts) {
     return _database.markTransferSynced(id, ts);
+  }
+
+  double _coerceDouble(dynamic value) {
+    if (value is num) {
+      return value.toDouble();
+    }
+    if (value is String) {
+      final parsed = double.tryParse(value);
+      if (parsed != null) {
+        return parsed;
+      }
+    }
+    return 0;
+  }
+
+  DateTime? _coerceDate(dynamic value) {
+    if (value is DateTime) {
+      return value.toUtc();
+    }
+    if (value is String && value.isNotEmpty) {
+      return DateTime.tryParse(value)?.toUtc();
+    }
+    return null;
   }
 }

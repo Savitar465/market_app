@@ -121,7 +121,7 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
                 NavigationRailDestination(
                   icon: Icon(Icons.business_outlined),
                   selectedIcon: Icon(Icons.business),
-                  label: Text('Maestros'),
+                  label: Text('Gestión'),
                 ),
                 NavigationRailDestination(
                   icon: Icon(Icons.swap_horiz_outlined),

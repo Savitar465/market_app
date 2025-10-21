@@ -111,7 +111,7 @@ class AuthRemoteDataSource {
       data['role'] ??
           data['role_name'] ??
           data['roleName'] ??
-          data['role_id'] ??
+          data['role_code'] ??
           data['roleCode'],
     );
     if (directRole != null) {

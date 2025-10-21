@@ -85,6 +85,7 @@ class _HomeRouter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = authenticatedSession.user;
+    print(user.role);
     if (user.role == UserRole.admin) {
       return InventoryHomePage(session: authenticatedSession);
     }

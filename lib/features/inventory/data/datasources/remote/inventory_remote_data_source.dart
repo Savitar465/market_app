@@ -13,6 +13,7 @@ class InventoryRemoteDataSource {
   // Table names
   static const String _locationsTable = 'inventory_locations';
   static const String _employeesTable = 'employees';
+  static const String _inventoryStocksTable = 'inventory_stocks';
   static const String _purchaseHeadersTable = 'purchase_headers';
   static const String _purchaseItemsTable = 'purchase_items';
   static const String _salesHeadersTable = 'sales_headers';
@@ -46,6 +47,34 @@ class InventoryRemoteDataSource {
         .whereType<Map<String, dynamic>>()
         .map(EmployeeModel.fromRemote)
         .toList();
+  }
+
+  Future<List<Map<String, dynamic>>> fetchInventoryStocks({
+    Set<String>? locationIds,
+  }) async {
+    final query = _client.schema(_schema).from(_inventoryStocksTable).select();
+    if (locationIds != null && locationIds.isNotEmpty) {
+      final filter = locationIds.map((id) => '"$id"').join(',');
+      query.filter('location_id', 'in', '($filter)');
+    }
+    final response =
+        await query.order('updated_at', ascending: false) as List<dynamic>;
+    return response.whereType<Map<String, dynamic>>().toList();
+  }
+
+  Future<void> upsertInventoryStocks(
+    List<Map<String, dynamic>> stocks,
+  ) async {
+    if (stocks.isEmpty) {
+      return;
+    }
+    await _client
+        .schema(_schema)
+        .from(_inventoryStocksTable)
+        .upsert(
+          stocks,
+          onConflict: 'product_id,location_id',
+        );
   }
 
   Future<void> upsertLocation(InventoryLocationModel model) async {

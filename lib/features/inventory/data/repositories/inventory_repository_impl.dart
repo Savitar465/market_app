@@ -1,3 +1,4 @@
+import 'package:market_app/features/products/domain/repositories/product_repository.dart';
 import 'package:market_app/features/inventory/domain/entities/employee.dart';
 import 'package:market_app/features/inventory/domain/entities/inventory_location.dart';
 import 'package:market_app/features/inventory/domain/entities/inventory_report.dart';
@@ -15,11 +16,14 @@ class InventoryRepositoryImpl implements InventoryRepository {
   InventoryRepositoryImpl({
     required InventoryLocalDataSource localDataSource,
     InventoryRemoteDataSource? remoteDataSource,
+    ProductRepository? productRepository,
   }) : _localDataSource = localDataSource,
-       _remoteDataSource = remoteDataSource;
+       _remoteDataSource = remoteDataSource,
+       _productRepository = productRepository;
 
   final InventoryLocalDataSource _localDataSource;
   final InventoryRemoteDataSource? _remoteDataSource;
+  final ProductRepository? _productRepository;
 
   @override
   Stream<List<InventoryLocation>> watchLocations(InventoryLocationType type) {
@@ -242,7 +246,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
     final unsyncedPurchases = await _localDataSource
         .fetchUnsyncedPurchasesForSync();
 
-    await _pullRemoteUpdates(
+    final remoteStockTimestamps = await _pullRemoteUpdates(
       remote: remote,
       pendingLocationIds: unsyncedLocations.map((loc) => loc.id).toSet(),
       pendingEmployeeIds: unsyncedEmployees.map((emp) => emp.id).toSet(),
@@ -282,6 +286,46 @@ class InventoryRepositoryImpl implements InventoryRepository {
       }
     }
 
+    final stocksForSync = await _localDataSource.fetchStocksForSync();
+    final stockPayload = <Map<String, dynamic>>[];
+    for (final stock in stocksForSync) {
+      final key = '${stock.productId}|${stock.locationId}';
+      final remoteUpdatedAt = remoteStockTimestamps[key];
+      final localUpdatedAt = stock.updatedAt;
+      if (remoteUpdatedAt != null && !localUpdatedAt.isAfter(remoteUpdatedAt)) {
+        continue;
+      }
+      stockPayload.add({
+        'product_id': stock.productId,
+        'location_id': stock.locationId,
+        'location_type': stock.locationType,
+        'quantity_on_hand': stock.quantityOnHand,
+        'quantity_reserved': stock.quantityReserved,
+        'updated_at': localUpdatedAt.toUtc().toIso8601String(),
+      });
+    }
+    if (stockPayload.isNotEmpty) {
+      try {
+        await remote.upsertInventoryStocks(stockPayload);
+      } catch (error) {
+        print(error);
+      }
+    }
+
+    final productRepository = _productRepository;
+    if (productRepository != null) {
+      try {
+        await productRepository.syncPendingOperations();
+      } catch (error) {
+        print(error);
+      }
+      try {
+        await productRepository.syncProducts();
+      } catch (error) {
+        print(error);
+      }
+    }
+
     // // Sales
     // final unsyncedSales = await _localDataSource.fetchUnsyncedSalesForSync();
     // for (final sale in unsyncedSales) {
@@ -301,11 +345,23 @@ class InventoryRepositoryImpl implements InventoryRepository {
     // }
   }
 
-  Future<void> _pullRemoteUpdates({
+  Future<Map<String, DateTime?>> _pullRemoteUpdates({
     required InventoryRemoteDataSource remote,
     required Set<String> pendingLocationIds,
     required Set<String> pendingEmployeeIds,
   }) async {
+    DateTime? parseDate(dynamic value) {
+      if (value is DateTime) {
+        return value.toUtc();
+      }
+      if (value is String && value.isNotEmpty) {
+        return DateTime.tryParse(value)?.toUtc();
+      }
+      return null;
+    }
+
+    final stockTimestamps = <String, DateTime?>{};
+
     final lastLocationSync = await _localDataSource
         .fetchLastLocationsSyncedAt();
     final remoteLocations = await remote.fetchLocations(
@@ -329,5 +385,26 @@ class InventoryRepositoryImpl implements InventoryRepository {
         skipIds: pendingEmployeeIds,
       );
     }
+
+    final locationIds = await _localDataSource.fetchAllLocationIds();
+    if (locationIds.isNotEmpty) {
+      final remoteStocks = await remote.fetchInventoryStocks(
+        locationIds: locationIds.toSet(),
+      );
+      if (remoteStocks.isNotEmpty) {
+        await _localDataSource.cacheRemoteStocks(remoteStocks);
+        for (final entry in remoteStocks) {
+          final productId = entry['product_id'] as String?;
+          final locationId = entry['location_id'] as String?;
+          if (productId == null || locationId == null) {
+            continue;
+          }
+          stockTimestamps['$productId|$locationId'] =
+              parseDate(entry['updated_at']);
+        }
+      }
+    }
+
+    return stockTimestamps;
   }
 }

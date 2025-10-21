@@ -108,6 +108,7 @@ class _PurchaseFormState extends State<_PurchaseForm> {
                 .toList(),
           );
           context.read<TransactionsCubit>().recordPurchase(purchase);
+
           setState(() {
             _lines.clear();
           });
