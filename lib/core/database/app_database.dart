@@ -90,7 +90,8 @@ class EmployeesTable extends Table {
   TextColumn get phone => text().nullable()();
   TextColumn get authUserId => text().nullable()();
   TextColumn get role => text()();
-  TextColumn get locationId => text().nullable().references(InventoryLocationsTable, #id)();
+  TextColumn get locationId =>
+      text().nullable().references(InventoryLocationsTable, #id)();
   TextColumn get locationType => text().nullable()();
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
   DateTimeColumn get hiredAt => dateTime().nullable()();
@@ -217,7 +218,24 @@ class TransferItemsTable extends Table {
   @override
   Set<Column<Object>> get primaryKey => {id};
 }
-@DriftDatabase(tables: [AuthCredentialsTable, SellersTable, ProductsTable, InventoryLocationsTable, EmployeesTable, InventoryStocksTable, InventoryMovementsTable, PurchaseHeadersTable, PurchaseItemsTable, SalesHeadersTable, SalesItemsTable, TransferHeadersTable, TransferItemsTable])
+
+@DriftDatabase(
+  tables: [
+    AuthCredentialsTable,
+    SellersTable,
+    ProductsTable,
+    InventoryLocationsTable,
+    EmployeesTable,
+    InventoryStocksTable,
+    InventoryMovementsTable,
+    PurchaseHeadersTable,
+    PurchaseItemsTable,
+    SalesHeadersTable,
+    SalesItemsTable,
+    TransferHeadersTable,
+    TransferItemsTable,
+  ],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
@@ -254,9 +272,15 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 7) {
         // Use raw SQL to add synced_at columns to header tables to avoid generator type issues during migration.
-        await this.customStatement('ALTER TABLE purchase_headers_table ADD COLUMN synced_at TIMESTAMP NULL');
-        await this.customStatement('ALTER TABLE sales_headers_table ADD COLUMN synced_at TIMESTAMP NULL');
-        await this.customStatement('ALTER TABLE transfer_headers_table ADD COLUMN synced_at TIMESTAMP NULL');
+        await this.customStatement(
+          'ALTER TABLE purchase_headers_table ADD COLUMN synced_at TIMESTAMP NULL',
+        );
+        await this.customStatement(
+          'ALTER TABLE sales_headers_table ADD COLUMN synced_at TIMESTAMP NULL',
+        );
+        await this.customStatement(
+          'ALTER TABLE transfer_headers_table ADD COLUMN synced_at TIMESTAMP NULL',
+        );
       }
       if (from < 8) {
         await m.addColumn(employeesTable, employeesTable.authUserId);
@@ -417,13 +441,16 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<int> deleteLocation(String id) {
-    return (delete(inventoryLocationsTable)..where((tbl) => tbl.id.equals(id))).go();
+    return (delete(
+      inventoryLocationsTable,
+    )..where((tbl) => tbl.id.equals(id))).go();
   }
 
   Stream<List<EmployeesTableData>> watchEmployees({String? locationId}) {
     final query = select(employeesTable)
       ..orderBy([
-        (tbl) => OrderingTerm(expression: tbl.firstName, mode: OrderingMode.asc),
+        (tbl) =>
+            OrderingTerm(expression: tbl.firstName, mode: OrderingMode.asc),
         (tbl) => OrderingTerm(expression: tbl.lastName, mode: OrderingMode.asc),
       ]);
     if (locationId != null) {
@@ -440,7 +467,9 @@ class AppDatabase extends _$AppDatabase {
     return (delete(employeesTable)..where((tbl) => tbl.id.equals(id))).go();
   }
 
-  Stream<List<InventoryStocksTableData>> watchInventoryStocks({String? locationId}) {
+  Stream<List<InventoryStocksTableData>> watchInventoryStocks({
+    String? locationId,
+  }) {
     final query = select(inventoryStocksTable);
     if (locationId != null) {
       query.where((tbl) => tbl.locationId.equals(locationId));
@@ -452,11 +481,11 @@ class AppDatabase extends _$AppDatabase {
     String productId,
     String locationId,
   ) {
-    return (select(inventoryStocksTable)
-          ..where(
-            (tbl) =>
-                tbl.productId.equals(productId) & tbl.locationId.equals(locationId),
-          ))
+    return (select(inventoryStocksTable)..where(
+          (tbl) =>
+              tbl.productId.equals(productId) &
+              tbl.locationId.equals(locationId),
+        ))
         .getSingleOrNull();
   }
 
@@ -470,7 +499,8 @@ class AppDatabase extends _$AppDatabase {
   }) {
     final query = select(inventoryMovementsTable)
       ..orderBy([
-        (tbl) => OrderingTerm(expression: tbl.occurredAt, mode: OrderingMode.desc),
+        (tbl) =>
+            OrderingTerm(expression: tbl.occurredAt, mode: OrderingMode.desc),
       ]);
     if (productId != null) {
       query.where((tbl) => tbl.productId.equals(productId));
@@ -483,26 +513,45 @@ class AppDatabase extends _$AppDatabase {
 
   // --- Sync helpers ---
   Future<List<InventoryLocationsTableData>> fetchUnsyncedLocations() {
-    return (select(inventoryLocationsTable)
-          ..where((tbl) => tbl.syncedAt.isNull() | tbl.syncedAt.isSmallerThan(tbl.updatedAt)))
+    return (select(inventoryLocationsTable)..where(
+          (tbl) =>
+              tbl.syncedAt.isNull() | tbl.syncedAt.isSmallerThan(tbl.updatedAt),
+        ))
         .get();
   }
 
   Future<void> markLocationSynced(String id, DateTime ts) {
-    return (update(inventoryLocationsTable)..where((t) => t.id.equals(id))).write(
-      InventoryLocationsTableCompanion(syncedAt: Value(ts)),
-    );
+    return (update(inventoryLocationsTable)..where((t) => t.id.equals(id)))
+        .write(InventoryLocationsTableCompanion(syncedAt: Value(ts)));
+  }
+
+  Future<DateTime?> fetchMaxLocationsSyncedAt() async {
+    final row = await customSelect(
+      'SELECT MAX(synced_at) as max_ts FROM inventory_locations_table',
+    ).getSingleOrNull();
+    final raw = row?.data['max_ts'];
+    if (raw is DateTime) {
+      return raw.toUtc();
+    }
+    if (raw is String) {
+      return DateTime.tryParse(raw)?.toUtc();
+    }
+    return null;
   }
 
   Future<DateTime?> fetchMaxLocationsUpdatedAt() async {
-    final row = await customSelect('SELECT MAX(updated_at) as max_ts FROM inventory_locations_table').getSingleOrNull();
+    final row = await customSelect(
+      'SELECT MAX(updated_at) as max_ts FROM inventory_locations_table',
+    ).getSingleOrNull();
     final val = row?.data['max_ts'] as DateTime?;
     return val;
   }
 
   Future<List<EmployeesTableData>> fetchUnsyncedEmployees() {
-    return (select(employeesTable)
-          ..where((tbl) => tbl.syncedAt.isNull() | tbl.syncedAt.isSmallerThan(tbl.updatedAt)))
+    return (select(employeesTable)..where(
+          (tbl) =>
+              tbl.syncedAt.isNull() | tbl.syncedAt.isSmallerThan(tbl.updatedAt),
+        ))
         .get();
   }
 
@@ -512,78 +561,114 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
+  Future<DateTime?> fetchMaxEmployeesSyncedAt() async {
+    final row = await customSelect(
+      'SELECT MAX(synced_at) as max_ts FROM employees_table',
+    ).getSingleOrNull();
+    final raw = row?.data['max_ts'];
+    if (raw is DateTime) {
+      return raw.toUtc();
+    }
+    if (raw is String) {
+      return DateTime.tryParse(raw)?.toUtc();
+    }
+    return null;
+  }
+
   Future<DateTime?> fetchMaxEmployeesUpdatedAt() async {
-    final row = await customSelect('SELECT MAX(updated_at) as max_ts FROM employees_table').getSingleOrNull();
+    final row = await customSelect(
+      'SELECT MAX(updated_at) as max_ts FROM employees_table',
+    ).getSingleOrNull();
     final val = row?.data['max_ts'] as DateTime?;
     return val;
   }
 
   Future<List<PurchaseHeadersTableData>> fetchUnsyncedPurchases() {
-    return (select(purchaseHeadersTable)
-          ..where((tbl) => tbl.syncedAt.isNull() | tbl.syncedAt.isSmallerThan(tbl.updatedAt)))
+    return (select(purchaseHeadersTable)..where(
+          (tbl) =>
+              tbl.syncedAt.isNull() | tbl.syncedAt.isSmallerThan(tbl.updatedAt),
+        ))
         .get();
   }
 
   Future<List<PurchaseItemsTableData>> fetchPurchaseItems(String purchaseId) {
-    return (select(purchaseItemsTable)..where((t) => t.purchaseId.equals(purchaseId))).get();
+    return (select(
+      purchaseItemsTable,
+    )..where((t) => t.purchaseId.equals(purchaseId))).get();
   }
 
   Future<void> markPurchaseSynced(String id, DateTime ts) async {
     final tsStr = ts.toUtc().toIso8601String();
     await customStatement(
-        "UPDATE purchase_headers_table SET synced_at = '$tsStr' WHERE id = '$id'");
+      "UPDATE purchase_headers_table SET synced_at = '$tsStr' WHERE id = '$id'",
+    );
   }
 
   Future<DateTime?> fetchMaxPurchasesUpdatedAt() async {
-    final row = await customSelect('SELECT MAX(updated_at) as max_ts FROM purchase_headers_table').getSingleOrNull();
+    final row = await customSelect(
+      'SELECT MAX(updated_at) as max_ts FROM purchase_headers_table',
+    ).getSingleOrNull();
     final val = row?.data['max_ts'] as DateTime?;
     return val;
   }
 
   Future<List<SalesHeadersTableData>> fetchUnsyncedSales() {
-    return (select(salesHeadersTable)
-          ..where((tbl) => tbl.syncedAt.isNull() | tbl.syncedAt.isSmallerThan(tbl.updatedAt)))
+    return (select(salesHeadersTable)..where(
+          (tbl) =>
+              tbl.syncedAt.isNull() | tbl.syncedAt.isSmallerThan(tbl.updatedAt),
+        ))
         .get();
   }
 
   Future<List<SalesItemsTableData>> fetchSaleItems(String saleId) {
-    return (select(salesItemsTable)..where((t) => t.saleId.equals(saleId))).get();
+    return (select(
+      salesItemsTable,
+    )..where((t) => t.saleId.equals(saleId))).get();
   }
 
   Future<void> markSaleSynced(String id, DateTime ts) async {
     final tsStr = ts.toUtc().toIso8601String();
     await customStatement(
-        "UPDATE sales_headers_table SET synced_at = '$tsStr' WHERE id = '$id'");
+      "UPDATE sales_headers_table SET synced_at = '$tsStr' WHERE id = '$id'",
+    );
   }
 
   Future<DateTime?> fetchMaxSalesUpdatedAt() async {
-    final row = await customSelect('SELECT MAX(updated_at) as max_ts FROM sales_headers_table').getSingleOrNull();
+    final row = await customSelect(
+      'SELECT MAX(updated_at) as max_ts FROM sales_headers_table',
+    ).getSingleOrNull();
     final val = row?.data['max_ts'] as DateTime?;
     return val;
   }
 
   Future<List<TransferHeadersTableData>> fetchUnsyncedTransfers() {
-    return (select(transferHeadersTable)
-          ..where((tbl) => tbl.syncedAt.isNull() | tbl.syncedAt.isSmallerThan(tbl.updatedAt)))
+    return (select(transferHeadersTable)..where(
+          (tbl) =>
+              tbl.syncedAt.isNull() | tbl.syncedAt.isSmallerThan(tbl.updatedAt),
+        ))
         .get();
   }
 
   Future<List<TransferItemsTableData>> fetchTransferItems(String transferId) {
-    return (select(transferItemsTable)..where((t) => t.transferId.equals(transferId))).get();
+    return (select(
+      transferItemsTable,
+    )..where((t) => t.transferId.equals(transferId))).get();
   }
 
   Future<void> markTransferSynced(String id, DateTime ts) async {
     final tsStr = ts.toUtc().toIso8601String();
     await customStatement(
-        "UPDATE transfer_headers_table SET synced_at = '$tsStr' WHERE id = '$id'");
+      "UPDATE transfer_headers_table SET synced_at = '$tsStr' WHERE id = '$id'",
+    );
   }
 
   Future<DateTime?> fetchMaxTransfersUpdatedAt() async {
-    final row = await customSelect('SELECT MAX(updated_at) as max_ts FROM transfer_headers_table').getSingleOrNull();
+    final row = await customSelect(
+      'SELECT MAX(updated_at) as max_ts FROM transfer_headers_table',
+    ).getSingleOrNull();
     final val = row?.data['max_ts'] as DateTime?;
     return val;
   }
-
 }
 
 QueryExecutor _openConnection() {
@@ -593,5 +678,3 @@ QueryExecutor _openConnection() {
     return NativeDatabase.createInBackground(file);
   });
 }
-
-

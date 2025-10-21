@@ -149,7 +149,7 @@ class _EmployeesTab extends StatelessWidget {
         final locationFilters = <DropdownMenuItem<String?>>[
           const DropdownMenuItem<String?>(
             value: null,
-            child: Text('Todas las ubicaciones'),
+            child: Text('Todo'),
           ),
           ...allLocations.map(
             (location) => DropdownMenuItem<String?>(
@@ -1032,7 +1032,7 @@ Future<void> _assignSupabaseUserRole(
   try {
     await client.schema('market').from('user_roles').insert({
       'user_id': userId,
-      'role_code': roleCode,
+      'role_id': roleCode,
     });
   } on PostgrestException catch (error) {
     throw AuthException(
@@ -1050,12 +1050,13 @@ String? _normalizeSupabaseRoleCode(String role) {
   }
   switch (normalized) {
     case 'admin':
+      return '1';
     case 'seller':
-      return normalized;
+      return '2';
     case 'user':
     case 'customer':
     case 'colaborador':
-      return 'customer';
+      return '3';
     default:
       return normalized;
   }

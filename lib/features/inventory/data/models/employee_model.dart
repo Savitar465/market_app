@@ -94,6 +94,80 @@ class EmployeeModel extends Equatable {
     );
   }
 
+  factory EmployeeModel.fromRemote(Map<String, dynamic> data) {
+    DateTime? parseDate(dynamic value) {
+      if (value is DateTime) {
+        return value.toUtc();
+      }
+      if (value is String && value.isNotEmpty) {
+        return DateTime.tryParse(value)?.toUtc();
+      }
+      return null;
+    }
+
+    bool parseBool(dynamic value, {bool fallback = false}) {
+      if (value is bool) {
+        return value;
+      }
+      if (value is num) {
+        return value != 0;
+      }
+      if (value is String) {
+        final normalized = value.toLowerCase();
+        if (normalized == 'true' || normalized == '1') {
+          return true;
+        }
+        if (normalized == 'false' || normalized == '0') {
+          return false;
+        }
+      }
+      return fallback;
+    }
+
+    String? parseString(dynamic value) {
+      if (value is String && value.isNotEmpty) {
+        return value;
+      }
+      if (value == null) {
+        return null;
+      }
+      final stringified = value.toString();
+      return stringified.isEmpty ? null : stringified;
+    }
+
+    final dynamic rawId = data['id'];
+    if (rawId == null) {
+      throw const FormatException('employees row is missing id');
+    }
+
+    final firstName = parseString(data['first_name']);
+    if (firstName == null) {
+      throw const FormatException('employees row is missing first_name');
+    }
+
+    final role = parseString(data['role']);
+    if (role == null) {
+      throw const FormatException('employees row is missing role');
+    }
+
+    final updatedAt = parseDate(data['updated_at']);
+    return EmployeeModel(
+      id: rawId.toString(),
+      firstName: firstName,
+      lastName: parseString(data['last_name']),
+      email: parseString(data['email']),
+      phone: parseString(data['phone']),
+      authUserId: parseString(data['auth_user_id']),
+      role: role,
+      locationId: parseString(data['location_id']),
+      locationType: parseString(data['location_type']),
+      isActive: parseBool(data['is_active'], fallback: true),
+      hiredAt: parseDate(data['hired_at']),
+      createdAt: parseDate(data['created_at']),
+      updatedAt: updatedAt,
+      syncedAt: updatedAt,
+    );
+  }
   factory EmployeeModel.fromEntity(Employee entity) {
     return EmployeeModel(
       id: entity.id,

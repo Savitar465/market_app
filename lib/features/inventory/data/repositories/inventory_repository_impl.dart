@@ -15,8 +15,8 @@ class InventoryRepositoryImpl implements InventoryRepository {
   InventoryRepositoryImpl({
     required InventoryLocalDataSource localDataSource,
     InventoryRemoteDataSource? remoteDataSource,
-  })  : _localDataSource = localDataSource,
-        _remoteDataSource = remoteDataSource;
+  }) : _localDataSource = localDataSource,
+       _remoteDataSource = remoteDataSource;
 
   final InventoryLocalDataSource _localDataSource;
   final InventoryRemoteDataSource? _remoteDataSource;
@@ -30,13 +30,16 @@ class InventoryRepositoryImpl implements InventoryRepository {
 
   @override
   Future<void> saveLocation(InventoryLocation location) async {
-    final model = InventoryLocationModel.fromEntity(location);
+    final now = DateTime.now().toUtc();
+    final model = InventoryLocationModel.fromEntity(
+      location,
+    ).copyWith(createdAt: location.createdAt ?? now, updatedAt: now);
     await _localDataSource.upsertLocation(model);
     // Best-effort remote save
     if (_remoteDataSource != null) {
       try {
         await _remoteDataSource.upsertLocation(model);
-        await _localDataSource.markLocationSynced(model.id, DateTime.now().toUtc());
+        await _localDataSource.markLocationSynced(model.id, now);
       } catch (_) {
         // ignore network errors; will be retried by syncPendingChanges
       }
@@ -50,7 +53,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
       try {
         await _remoteDataSource.deleteLocation(locationId);
       } catch (_) {
-        // ignore – delete will reconcile on next full sync/prune
+        // ignore - delete will reconcile on next full sync/prune
       }
     }
   }
@@ -69,7 +72,10 @@ class InventoryRepositoryImpl implements InventoryRepository {
     if (_remoteDataSource != null) {
       try {
         await _remoteDataSource.upsertEmployee(model);
-        await _localDataSource.markEmployeeSynced(model.id, DateTime.now().toUtc());
+        await _localDataSource.markEmployeeSynced(
+          model.id,
+          DateTime.now().toUtc(),
+        );
       } catch (_) {}
     }
   }
@@ -108,8 +114,10 @@ class InventoryRepositoryImpl implements InventoryRepository {
     required String productId,
     required String locationId,
   }) async {
-    final model =
-        await _localDataSource.getStock(productId: productId, locationId: locationId);
+    final model = await _localDataSource.getStock(
+      productId: productId,
+      locationId: locationId,
+    );
     return model?.toEntity();
   }
 
@@ -120,7 +128,10 @@ class InventoryRepositoryImpl implements InventoryRepository {
     if (_remoteDataSource != null) {
       try {
         await _remoteDataSource.savePurchase(model);
-        await _localDataSource.markPurchaseSynced(model.id, DateTime.now().toUtc());
+        await _localDataSource.markPurchaseSynced(
+          model.id,
+          DateTime.now().toUtc(),
+        );
       } catch (_) {}
     }
   }
@@ -144,7 +155,10 @@ class InventoryRepositoryImpl implements InventoryRepository {
     if (_remoteDataSource != null) {
       try {
         await _remoteDataSource.saveTransfer(model);
-        await _localDataSource.markTransferSynced(model.id, DateTime.now().toUtc());
+        await _localDataSource.markTransferSynced(
+          model.id,
+          DateTime.now().toUtc(),
+        );
       } catch (_) {}
     }
   }
@@ -219,32 +233,50 @@ class InventoryRepositoryImpl implements InventoryRepository {
   Future<void> syncPendingChanges() async {
     if (_remoteDataSource == null) return;
 
-    // Locations
-    final unsyncedLocations = await _localDataSource.fetchUnsyncedLocationsForSync();
-    for (final loc in unsyncedLocations) {
+    final remote = _remoteDataSource;
+
+    final unsyncedLocations = await _localDataSource
+        .fetchUnsyncedLocationsForSync();
+    final unsyncedEmployees = await _localDataSource
+        .fetchUnsyncedEmployeesForSync();
+    final unsyncedPurchases = await _localDataSource
+        .fetchUnsyncedPurchasesForSync();
+
+    await _pullRemoteUpdates(
+      remote: remote,
+      pendingLocationIds: unsyncedLocations.map((loc) => loc.id).toSet(),
+      pendingEmployeeIds: unsyncedEmployees.map((emp) => emp.id).toSet(),
+    );
+
+    for (final location in unsyncedLocations) {
       try {
-        await _remoteDataSource.upsertLocation(loc);
-        await _localDataSource.markLocationSynced(loc.id, DateTime.now().toUtc());
+        await remote.upsertLocation(location);
+        await _localDataSource.markLocationSynced(
+          location.id,
+          DateTime.now().toUtc(),
+        );
       } catch (_) {}
     }
 
-    // Employees
-    final unsyncedEmployees = await _localDataSource.fetchUnsyncedEmployeesForSync();
-    for (final emp in unsyncedEmployees) {
+    for (final employee in unsyncedEmployees) {
       try {
-        await _remoteDataSource.upsertEmployee(emp);
-        await _localDataSource.markEmployeeSynced(emp.id, DateTime.now().toUtc());
+        await remote.upsertEmployee(employee);
+        await _localDataSource.markEmployeeSynced(
+          employee.id,
+          DateTime.now().toUtc(),
+        );
       } catch (error) {
         print(error);
       }
     }
 
-    // Purchases
-    final unsyncedPurchases = await _localDataSource.fetchUnsyncedPurchasesForSync();
-    for (final p in unsyncedPurchases) {
+    for (final purchase in unsyncedPurchases) {
       try {
-        await _remoteDataSource.savePurchase(p);
-        await _localDataSource.markPurchaseSynced(p.id, DateTime.now().toUtc());
+        await remote.savePurchase(purchase);
+        await _localDataSource.markPurchaseSynced(
+          purchase.id,
+          DateTime.now().toUtc(),
+        );
       } catch (error) {
         print(error);
       }
@@ -252,21 +284,50 @@ class InventoryRepositoryImpl implements InventoryRepository {
 
     // // Sales
     // final unsyncedSales = await _localDataSource.fetchUnsyncedSalesForSync();
-    // for (final s in unsyncedSales) {
+    // for (final sale in unsyncedSales) {
     //   try {
-    //     await _remoteDataSource.saveSale(s);
-    //     await _localDataSource.markSaleSynced(s.id, DateTime.now().toUtc());
+    //     await remote.saveSale(sale);
+    //     await _localDataSource.markSaleSynced(sale.id, DateTime.now().toUtc());
     //   } catch (_) {}
     // }
     //
     // // Transfers
     // final unsyncedTransfers = await _localDataSource.fetchUnsyncedTransfersForSync();
-    // for (final t in unsyncedTransfers) {
+    // for (final transfer in unsyncedTransfers) {
     //   try {
-    //     await _remoteDataSource.saveTransfer(t);
-    //     await _localDataSource.markTransferSynced(t.id, DateTime.now().toUtc());
+    //     await remote.saveTransfer(transfer);
+    //     await _localDataSource.markTransferSynced(transfer.id, DateTime.now().toUtc());
     //   } catch (_) {}
     // }
   }
-}
 
+  Future<void> _pullRemoteUpdates({
+    required InventoryRemoteDataSource remote,
+    required Set<String> pendingLocationIds,
+    required Set<String> pendingEmployeeIds,
+  }) async {
+    final lastLocationSync = await _localDataSource
+        .fetchLastLocationsSyncedAt();
+    final remoteLocations = await remote.fetchLocations(
+      updatedAfter: lastLocationSync,
+    );
+    if (remoteLocations.isNotEmpty) {
+      await _localDataSource.cacheRemoteLocations(
+        remoteLocations,
+        skipIds: pendingLocationIds,
+      );
+    }
+
+    final lastEmployeeSync = await _localDataSource
+        .fetchLastEmployeesSyncedAt();
+    final remoteEmployees = await remote.fetchEmployees(
+      updatedAfter: lastEmployeeSync,
+    );
+    if (remoteEmployees.isNotEmpty) {
+      await _localDataSource.cacheRemoteEmployees(
+        remoteEmployees,
+        skipIds: pendingEmployeeIds,
+      );
+    }
+  }
+}

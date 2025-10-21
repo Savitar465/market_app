@@ -24,9 +24,9 @@ UserRole userRoleFromString(String? value) {
 
 extension UserRoleX on UserRole {
   String get label => switch (this) {
-    UserRole.admin => 'admin',
-    UserRole.seller => 'seller',
-    UserRole.customer => 'customer',
+    UserRole.admin => '1',
+    UserRole.seller => '2',
+    UserRole.customer => '3',
     UserRole.unknown => 'unknown',
   };
 

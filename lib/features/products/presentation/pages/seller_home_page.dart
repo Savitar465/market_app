@@ -132,9 +132,7 @@ class _SellerHomePageState extends State<SellerHomePage> {
       final dynamic employeeResponse = await supabase
           .schema('market')
           .from('employees')
-          .select(
-            'id, first_name, last_name, email, phone, auth_user_id, role, location_id, location_type, is_active, hired_at, created_at, updated_at, synced_at',
-          )
+          .select()
           .eq('auth_user_id', authUserId)
           .maybeSingle();
 
@@ -151,9 +149,7 @@ class _SellerHomePageState extends State<SellerHomePage> {
         final dynamic locationResponse = await supabase
             .schema('market')
             .from('inventory_locations')
-            .select(
-              'id, type, name, code, description, address, phone, manager_id, is_active, created_at, updated_at, synced_at',
-            )
+            .select()
             .eq('id', locationId)
             .maybeSingle();
 

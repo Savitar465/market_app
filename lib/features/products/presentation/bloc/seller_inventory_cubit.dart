@@ -67,26 +67,54 @@ class SellerInventoryCubit extends Cubit<SellerInventoryState> {
   }) async {
     emit(state.copyWith(isLoading: true, error: null));
     try {
-      final response = await _supabase
+      final stockResponse = await _supabase
           .schema('market')
           .from('inventory_stocks')
-          .select(
-            'product_id, quantity_on_hand, quantity_reserved, updated_at, products(*)',
-          )
+          .select('product_id, quantity_on_hand, quantity_reserved, updated_at')
           .eq('location_id', location.id)
           .eq('location_type', location.type.label)
-          .eq('products.seller_id', sellerId)
           .order('updated_at', ascending: false);
 
-      final rows = (response as List).cast<Map<String, dynamic>>();
+      final stockRows = (stockResponse as List).cast<Map<String, dynamic>>();
+      if (stockRows.isEmpty) {
+        emit(state.copyWith(isLoading: false, items: const [], error: null));
+        return;
+      }
+
+      final productIds = stockRows
+          .map((row) => row['product_id'])
+          .whereType<String>()
+          .toSet();
+      if (productIds.isEmpty) {
+        emit(state.copyWith(isLoading: false, items: const [], error: null));
+        return;
+      }
+
+      final productFilter = productIds.map((id) => '"$id"').join(',');
+      final productResponse = await _supabase
+          .schema('market')
+          .from('products')
+          .select()
+          .filter('id', 'in', '($productFilter)')
+          .eq('seller_id', sellerId);
+      final productRows = (productResponse as List)
+          .cast<Map<String, dynamic>>();
+      final productById = <String, ProductModel>{};
+      for (final productRow in productRows) {
+        final productModel = ProductModel.fromRemote(productRow);
+        productById[productModel.id] = productModel;
+      }
 
       final items = <SellerInventoryItem>[];
-      for (final entry in rows) {
-        final productMap = entry['products'];
-        if (productMap is! Map<String, dynamic>) {
+      for (final entry in stockRows) {
+        final productId = entry['product_id'] as String?;
+        if (productId == null) {
           continue;
         }
-        final productModel = ProductModel.fromRemote(productMap);
+        final productModel = productById[productId];
+        if (productModel == null) {
+          continue;
+        }
         final product = productModel.toEntity();
         final quantityOnHand = _parseDouble(entry['quantity_on_hand']);
         final quantityReserved = _parseDouble(entry['quantity_reserved']);

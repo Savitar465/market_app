@@ -23,7 +23,7 @@ class InventoryLocalDataSource {
   }
 
   Future<void> upsertLocation(InventoryLocationModel location) {
-    final timestamp = DateTime.now().toUtc();
+    final timestamp = location.updatedAt ?? DateTime.now().toUtc();
     final model = location.copyWith(
       updatedAt: timestamp,
       createdAt: location.createdAt ?? timestamp,
@@ -36,13 +36,13 @@ class InventoryLocalDataSource {
   }
 
   Stream<List<EmployeeModel>> watchEmployees({String? locationId}) {
-    return _database.watchEmployees(locationId: locationId).map(
-          (rows) => rows.map(EmployeeModel.fromTable).toList(),
-        );
+    return _database
+        .watchEmployees(locationId: locationId)
+        .map((rows) => rows.map(EmployeeModel.fromTable).toList());
   }
 
   Future<void> upsertEmployee(EmployeeModel employee) {
-    final timestamp = DateTime.now().toUtc();
+    final timestamp = employee.updatedAt ?? DateTime.now().toUtc();
     final model = employee.copyWith(
       updatedAt: timestamp,
       createdAt: employee.createdAt ?? timestamp,
@@ -84,8 +84,9 @@ class InventoryLocalDataSource {
       return rows.map((row) {
         final stockRow = row.readTable(_database.inventoryStocksTable);
         final productRow = row.readTable(_database.productsTable);
-        final locationRow =
-            row.readTableOrNull(_database.inventoryLocationsTable);
+        final locationRow = row.readTableOrNull(
+          _database.inventoryLocationsTable,
+        );
         return InventoryStockModel.fromData(
           productId: stockRow.productId,
           productName: productRow.name,
@@ -102,8 +103,9 @@ class InventoryLocalDataSource {
   }
 
   Future<List<InventoryStockModel>> fetchGlobalInventory() async {
-    final result = await _database.customSelect(
-      '''
+    final result = await _database
+        .customSelect(
+          '''
 SELECT s.product_id AS product_id,
        p.name AS product_name,
        p.unit AS unit,
@@ -115,11 +117,9 @@ SELECT s.product_id AS product_id,
  GROUP BY s.product_id, p.name, p.unit
  ORDER BY p.name ASC
 ''',
-      readsFrom: {
-        _database.inventoryStocksTable,
-        _database.productsTable,
-      },
-    ).get();
+          readsFrom: {_database.inventoryStocksTable, _database.productsTable},
+        )
+        .get();
 
     return result
         .map(
@@ -147,10 +147,9 @@ SELECT s.product_id AS product_id,
       return null;
     }
     final productRow = await _database.fetchProductById(productId);
-    final locationRow =
-        await (_database.select(_database.inventoryLocationsTable)
-              ..where((tbl) => tbl.id.equals(locationId)))
-            .getSingleOrNull();
+    final locationRow = await (_database.select(
+      _database.inventoryLocationsTable,
+    )..where((tbl) => tbl.id.equals(locationId))).getSingleOrNull();
 
     return InventoryStockModel.fromData(
       productId: stockRow.productId,
@@ -178,14 +177,11 @@ SELECT s.product_id AS product_id,
       await _database
           .into(_database.purchaseHeadersTable)
           .insertOnConflictUpdate(header);
-      await (_database.delete(_database.purchaseItemsTable)
-            ..where((tbl) => tbl.purchaseId.equals(purchase.id)))
-          .go();
+      await (_database.delete(
+        _database.purchaseItemsTable,
+      )..where((tbl) => tbl.purchaseId.equals(purchase.id))).go();
       await _database.batch((batch) {
-        batch.insertAllOnConflictUpdate(
-          _database.purchaseItemsTable,
-          items,
-        );
+        batch.insertAllOnConflictUpdate(_database.purchaseItemsTable, items);
       });
 
       for (final line in purchase.lines) {
@@ -224,14 +220,11 @@ SELECT s.product_id AS product_id,
       await _database
           .into(_database.salesHeadersTable)
           .insertOnConflictUpdate(header);
-      await (_database.delete(_database.salesItemsTable)
-            ..where((tbl) => tbl.saleId.equals(sale.id)))
-          .go();
+      await (_database.delete(
+        _database.salesItemsTable,
+      )..where((tbl) => tbl.saleId.equals(sale.id))).go();
       await _database.batch((batch) {
-        batch.insertAllOnConflictUpdate(
-          _database.salesItemsTable,
-          items,
-        );
+        batch.insertAllOnConflictUpdate(_database.salesItemsTable, items);
       });
 
       for (final line in sale.lines) {
@@ -270,14 +263,11 @@ SELECT s.product_id AS product_id,
       await _database
           .into(_database.transferHeadersTable)
           .insertOnConflictUpdate(header);
-      await (_database.delete(_database.transferItemsTable)
-            ..where((tbl) => tbl.transferId.equals(transfer.id)))
-          .go();
+      await (_database.delete(
+        _database.transferItemsTable,
+      )..where((tbl) => tbl.transferId.equals(transfer.id))).go();
       await _database.batch((batch) {
-        batch.insertAllOnConflictUpdate(
-          _database.transferItemsTable,
-          items,
-        );
+        batch.insertAllOnConflictUpdate(_database.transferItemsTable, items);
       });
 
       for (final line in transfer.lines) {
@@ -342,8 +332,9 @@ SELECT s.product_id AS product_id,
       variables.add(Variable<DateTime>(end));
     }
 
-    final whereClause =
-        conditions.isEmpty ? '' : 'WHERE ${conditions.join(' AND ')}';
+    final whereClause = conditions.isEmpty
+        ? ''
+        : 'WHERE ${conditions.join(' AND ')}';
 
     final query = _database.customSelect(
       '''
@@ -400,8 +391,9 @@ SELECT sh.id AS sale_id,
       variables.add(Variable<DateTime>(end));
     }
 
-    final whereClause =
-        conditions.isEmpty ? '' : 'WHERE ${conditions.join(' AND ')}';
+    final whereClause = conditions.isEmpty
+        ? ''
+        : 'WHERE ${conditions.join(' AND ')}';
 
     final query = _database.customSelect(
       '''
@@ -463,8 +455,9 @@ SELECT ph.id AS purchase_id,
       variables.add(Variable<DateTime>(end));
     }
 
-    final whereClause =
-        conditions.isEmpty ? '' : 'WHERE ${conditions.join(' AND ')}';
+    final whereClause = conditions.isEmpty
+        ? ''
+        : 'WHERE ${conditions.join(' AND ')}';
 
     final query = _database.customSelect(
       '''
@@ -504,7 +497,9 @@ SELECT th.id AS transfer_id,
 
   Stream<DailySalesSummaryModel> watchDailySalesSummary(DateTime date) {
     final dayStart = DateTime(date.year, date.month, date.day);
-    final dayEnd = dayStart.add(const Duration(days: 1)).subtract(const Duration(milliseconds: 1));
+    final dayEnd = dayStart
+        .add(const Duration(days: 1))
+        .subtract(const Duration(milliseconds: 1));
 
     final query = _database.customSelect(
       '''
@@ -512,19 +507,16 @@ SELECT COALESCE(SUM(total_amount), 0) AS total_amount
   FROM sales_headers_table
  WHERE sale_date >= ? AND sale_date <= ?
 ''',
-      variables: [
-        Variable<DateTime>(dayStart),
-        Variable<DateTime>(dayEnd),
-      ],
+      variables: [Variable<DateTime>(dayStart), Variable<DateTime>(dayEnd)],
       readsFrom: {_database.salesHeadersTable},
     );
 
     return query.watchSingle().map(
-          (row) => DailySalesSummaryModel(
-            date: dayStart,
-            totalAmount: row.read<double>('total_amount'),
-          ),
-        );
+      (row) => DailySalesSummaryModel(
+        date: dayStart,
+        totalAmount: row.read<double>('total_amount'),
+      ),
+    );
   }
 
   Future<double> fetchTodayGlobalSalesTotal() async {
@@ -538,13 +530,8 @@ SELECT COALESCE(SUM(total_amount), 0) AS total_amount
     String? locationId,
   }) {
     return _database
-        .watchInventoryMovements(
-          productId: productId,
-          locationId: locationId,
-        )
-        .map(
-          (rows) => rows.map(InventoryMovementModel.fromTable).toList(),
-        );
+        .watchInventoryMovements(productId: productId, locationId: locationId)
+        .map((rows) => rows.map(InventoryMovementModel.fromTable).toList());
   }
 
   Future<void> _applyStockDelta({
@@ -554,12 +541,13 @@ SELECT COALESCE(SUM(total_amount), 0) AS total_amount
     required double delta,
   }) async {
     await _database.transaction(() async {
-      final existing = await (_database.select(_database.inventoryStocksTable)
-            ..where(
-              (tbl) => tbl.productId.equals(productId) &
-                  tbl.locationId.equals(locationId),
-            ))
-          .getSingleOrNull();
+      final existing =
+          await (_database.select(_database.inventoryStocksTable)..where(
+                (tbl) =>
+                    tbl.productId.equals(productId) &
+                    tbl.locationId.equals(locationId),
+              ))
+              .getSingleOrNull();
 
       final currentQuantity = existing?.quantityOnHand ?? 0;
       final newQuantity = currentQuantity + delta;
@@ -572,15 +560,15 @@ SELECT COALESCE(SUM(total_amount), 0) AS total_amount
       await _database
           .into(_database.inventoryStocksTable)
           .insertOnConflictUpdate(
-        InventoryStocksTableCompanion(
-          productId: Value(productId),
-          locationId: Value(locationId),
-          locationType: Value(locationType),
-          quantityOnHand: Value(newQuantity),
-          quantityReserved: Value(existing?.quantityReserved ?? 0),
-          updatedAt: Value(DateTime.now().toUtc()),
-        ),
-      );
+            InventoryStocksTableCompanion(
+              productId: Value(productId),
+              locationId: Value(locationId),
+              locationType: Value(locationType),
+              quantityOnHand: Value(newQuantity),
+              quantityReserved: Value(existing?.quantityReserved ?? 0),
+              updatedAt: Value(DateTime.now().toUtc()),
+            ),
+          );
     });
   }
 
@@ -615,6 +603,68 @@ SELECT COALESCE(SUM(total_amount), 0) AS total_amount
   }
 
   // --- Sync bridging methods (local <-> remote) ---
+  Future<void> cacheRemoteLocations(
+    List<InventoryLocationModel> locations, {
+    Set<String> skipIds = const <String>{},
+  }) async {
+    if (locations.isEmpty) {
+      return;
+    }
+
+    final now = DateTime.now().toUtc();
+    await _database.transaction(() async {
+      for (final location in locations) {
+        if (skipIds.contains(location.id)) {
+          continue;
+        }
+        final syncedAt = location.syncedAt ?? location.updatedAt ?? now;
+        final createdAt = location.createdAt ?? syncedAt;
+        final updatedAt = location.updatedAt ?? syncedAt;
+        final model = location.copyWith(
+          createdAt: createdAt,
+          updatedAt: updatedAt,
+          syncedAt: syncedAt,
+        );
+        await _database.upsertLocation(model.toCompanion());
+      }
+    });
+  }
+
+  Future<void> cacheRemoteEmployees(
+    List<EmployeeModel> employees, {
+    Set<String> skipIds = const <String>{},
+  }) async {
+    if (employees.isEmpty) {
+      return;
+    }
+
+    final now = DateTime.now().toUtc();
+    await _database.transaction(() async {
+      for (final employee in employees) {
+        if (skipIds.contains(employee.id)) {
+          continue;
+        }
+        final syncedAt = employee.syncedAt ?? employee.updatedAt ?? now;
+        final createdAt = employee.createdAt ?? syncedAt;
+        final updatedAt = employee.updatedAt ?? syncedAt;
+        final model = employee.copyWith(
+          createdAt: createdAt,
+          updatedAt: updatedAt,
+          syncedAt: syncedAt,
+        );
+        await _database.upsertEmployee(model.toCompanion());
+      }
+    });
+  }
+
+  Future<DateTime?> fetchLastLocationsSyncedAt() {
+    return _database.fetchMaxLocationsSyncedAt();
+  }
+
+  Future<DateTime?> fetchLastEmployeesSyncedAt() {
+    return _database.fetchMaxEmployeesSyncedAt();
+  }
+
   Future<List<InventoryLocationModel>> fetchUnsyncedLocationsForSync() async {
     final rows = await _database.fetchUnsyncedLocations();
     return rows.map(InventoryLocationModel.fromTable).toList();
@@ -639,24 +689,28 @@ SELECT COALESCE(SUM(total_amount), 0) AS total_amount
     for (final h in headers) {
       final items = await _database.fetchPurchaseItems(h.id);
       final lines = items
-          .map((i) => PurchaseLineModel(
-                productId: i.productId,
-                quantity: i.quantity,
-                unitCost: i.unitCost,
-                lineTotal: i.totalCost,
-              ))
+          .map(
+            (i) => PurchaseLineModel(
+              productId: i.productId,
+              quantity: i.quantity,
+              unitCost: i.unitCost,
+              lineTotal: i.totalCost,
+            ),
+          )
           .toList();
-      result.add(PurchaseModel(
-        id: h.id,
-        locationId: h.locationId,
-        locationType: h.locationType,
-        date: h.purchaseDate,
-        referenceCode: h.referenceCode,
-        supplierName: h.supplierName,
-        createdByEmployeeId: h.createdByEmployeeId,
-        notes: h.notes,
-        lines: lines,
-      ));
+      result.add(
+        PurchaseModel(
+          id: h.id,
+          locationId: h.locationId,
+          locationType: h.locationType,
+          date: h.purchaseDate,
+          referenceCode: h.referenceCode,
+          supplierName: h.supplierName,
+          createdByEmployeeId: h.createdByEmployeeId,
+          notes: h.notes,
+          lines: lines,
+        ),
+      );
     }
     return result;
   }
@@ -671,23 +725,27 @@ SELECT COALESCE(SUM(total_amount), 0) AS total_amount
     for (final h in headers) {
       final items = await _database.fetchSaleItems(h.id);
       final lines = items
-          .map((i) => SaleLineModel(
-                productId: i.productId,
-                quantity: i.quantity,
-                unitPrice: i.unitPrice,
-                lineTotal: i.totalPrice,
-              ))
+          .map(
+            (i) => SaleLineModel(
+              productId: i.productId,
+              quantity: i.quantity,
+              unitPrice: i.unitPrice,
+              lineTotal: i.totalPrice,
+            ),
+          )
           .toList();
-      result.add(SaleModel(
-        id: h.id,
-        storeId: h.storeId,
-        date: h.saleDate,
-        referenceCode: h.referenceCode,
-        customerName: h.customerName,
-        createdByEmployeeId: h.createdByEmployeeId,
-        notes: h.notes,
-        lines: lines,
-      ));
+      result.add(
+        SaleModel(
+          id: h.id,
+          storeId: h.storeId,
+          date: h.saleDate,
+          referenceCode: h.referenceCode,
+          customerName: h.customerName,
+          createdByEmployeeId: h.createdByEmployeeId,
+          notes: h.notes,
+          lines: lines,
+        ),
+      );
     }
     return result;
   }
@@ -702,23 +760,25 @@ SELECT COALESCE(SUM(total_amount), 0) AS total_amount
     for (final h in headers) {
       final items = await _database.fetchTransferItems(h.id);
       final lines = items
-          .map((i) => TransferLineModel(
-                productId: i.productId,
-                quantity: i.quantity,
-              ))
+          .map(
+            (i) =>
+                TransferLineModel(productId: i.productId, quantity: i.quantity),
+          )
           .toList();
-      result.add(TransferModel(
-        id: h.id,
-        originLocationId: h.originLocationId,
-        originLocationType: h.originLocationType,
-        destinationLocationId: h.destinationLocationId,
-        destinationLocationType: h.destinationLocationType,
-        date: h.transferDate,
-        requestedByEmployeeId: h.requestedByEmployeeId,
-        status: h.status,
-        notes: h.notes,
-        lines: lines,
-      ));
+      result.add(
+        TransferModel(
+          id: h.id,
+          originLocationId: h.originLocationId,
+          originLocationType: h.originLocationType,
+          destinationLocationId: h.destinationLocationId,
+          destinationLocationType: h.destinationLocationType,
+          date: h.transferDate,
+          requestedByEmployeeId: h.requestedByEmployeeId,
+          status: h.status,
+          notes: h.notes,
+          lines: lines,
+        ),
+      );
     }
     return result;
   }
@@ -727,8 +787,3 @@ SELECT COALESCE(SUM(total_amount), 0) AS total_amount
     return _database.markTransferSynced(id, ts);
   }
 }
-
-
-
-
-

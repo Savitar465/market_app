@@ -20,6 +20,34 @@ class InventoryRemoteDataSource {
   static const String _transferHeadersTable = 'transfer_headers';
   static const String _transferItemsTable = 'transfer_items';
 
+  Future<List<InventoryLocationModel>> fetchLocations({
+    DateTime? updatedAfter,
+  }) async {
+    final builder = _client.schema(_schema).from(_locationsTable).select();
+    if (updatedAfter != null) {
+      builder.gt('updated_at', updatedAfter.toUtc().toIso8601String());
+    }
+    final response =
+        await builder.order('updated_at', ascending: false) as List<dynamic>;
+    return response
+        .whereType<Map<String, dynamic>>()
+        .map(InventoryLocationModel.fromRemote)
+        .toList();
+  }
+
+  Future<List<EmployeeModel>> fetchEmployees({DateTime? updatedAfter}) async {
+    final builder = _client.schema(_schema).from(_employeesTable).select();
+    if (updatedAfter != null) {
+      builder.gt('updated_at', updatedAfter.toUtc().toIso8601String());
+    }
+    final response =
+        await builder.order('updated_at', ascending: false) as List<dynamic>;
+    return response
+        .whereType<Map<String, dynamic>>()
+        .map(EmployeeModel.fromRemote)
+        .toList();
+  }
+
   Future<void> upsertLocation(InventoryLocationModel model) async {
     final map = {
       'id': model.id,
