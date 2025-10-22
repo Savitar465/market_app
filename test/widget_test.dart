@@ -53,6 +53,27 @@ class _FakeProductRepository implements ProductRepository {
   Future<Product> upsertProduct(Product product) async => product;
 
   @override
+  Future<Product> createSimpleProduct({
+    required String name,
+    double? price,
+    String? unit,
+    String? description,
+  }) async {
+    return Product(
+      id: 'simple',
+      sellerId: 'inventory_simple',
+      name: name,
+      price: price ?? 0,
+      description: description,
+      category: null,
+      unit: unit,
+      quantity: null,
+      isTrending: false,
+      inStock: true,
+    );
+  }
+
+  @override
   Stream<List<Product>> watchProducts({String? sellerId}) =>
       Stream<List<Product>>.value(const []);
 }

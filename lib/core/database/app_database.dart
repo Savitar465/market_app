@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
@@ -383,6 +385,36 @@ class AppDatabase extends _$AppDatabase {
             ))
             .get();
     return rows.map((row) => row.id).toList();
+  }
+
+  Future<List<String>> fetchSimpleProductIds() async {
+    final rows = await (select(productsTable)
+          ..where((tbl) => tbl.metadataJson.isNotNull()))
+        .get();
+    final result = <String>[];
+    for (final row in rows) {
+      final raw = row.metadataJson;
+      if (raw == null) {
+        continue;
+      }
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is Map<String, dynamic>) {
+          final inventory = decoded['inventory'];
+          if (inventory is Map<String, dynamic> &&
+              inventory['simple'] == true) {
+            result.add(row.id);
+            continue;
+          }
+          if (decoded['simple'] == true) {
+            result.add(row.id);
+          }
+        }
+      } catch (_) {
+        // ignore invalid metadata payloads
+      }
+    }
+    return result;
   }
 
   Future<void> markProductSynced(String id, DateTime syncedAt) {

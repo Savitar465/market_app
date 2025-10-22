@@ -79,7 +79,7 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
         BlocProvider<InventoryStockCubit>(
           create: (_) =>
               InventoryStockCubit(repository: inventoryRepository)
-                ..refreshGlobal(),
+                ..watch(),
         ),
         BlocProvider<TransactionsCubit>(
           create: (_) => TransactionsCubit(repository: inventoryRepository),

@@ -2,11 +2,17 @@ import 'package:market_app/core/database/app_database.dart';
 import 'package:market_app/features/products/data/models/product_model.dart';
 import 'package:market_app/features/products/data/models/seller_model.dart';
 import 'package:market_app/features/products/domain/entities/product.dart';
+import 'package:uuid/uuid.dart';
 
 class ProductLocalDataSource {
   ProductLocalDataSource(this._database);
 
   final AppDatabase _database;
+  final Uuid _uuid = const Uuid();
+  static const String _simpleProductSellerId = 'inventory_simple';
+  static const Map<String, dynamic> _simpleProductMetadata = {
+    'inventory': {'simple': true},
+  };
 
   Stream<List<ProductModel>> watchProducts({String? sellerId}) {
     return _database
@@ -96,6 +102,8 @@ class ProductLocalDataSource {
     String? sellerId,
   }) async {
     final remoteIds = remoteProducts.map((product) => product.id).toSet();
+    final simpleIds = await _database.fetchSimpleProductIds();
+    final protectedIds = {...remoteIds, ...simpleIds};
     final dirtyIds = await _database.fetchDirtyProductIds();
     final now = DateTime.now().toUtc();
 
@@ -121,7 +129,10 @@ class ProductLocalDataSource {
       if (entries.isNotEmpty) {
         await _database.upsertProductsBatch(entries);
       }
-      await _database.pruneProducts(remoteIds: remoteIds, sellerId: sellerId);
+      await _database.pruneProducts(
+        remoteIds: protectedIds,
+        sellerId: sellerId,
+      );
     });
   }
 
@@ -148,5 +159,46 @@ class ProductLocalDataSource {
           .copyWith(syncedAt: syncedAt)
           .toCompanion(syncedAtOverride: syncedAt),
     );
+  }
+
+  Future<ProductModel> createSimpleProduct({
+    required String name,
+    required double price,
+    String? unit,
+    String? description,
+  }) async {
+    final now = DateTime.now().toUtc();
+    final trimmedName = name.trim();
+    final trimmedUnit = unit?.trim();
+    final trimmedDescription = description?.trim();
+    final model = ProductModel(
+      id: _uuid.v4(),
+      sellerId: _simpleProductSellerId,
+      name: trimmedName,
+      price: price,
+      unit: trimmedUnit?.isEmpty ?? true ? null : trimmedUnit,
+      description: trimmedDescription?.isEmpty ?? true ? null : trimmedDescription,
+      category: null,
+      quantity: null,
+      isTrending: false,
+      inStock: true,
+      rating: null,
+      createdAt: now,
+      updatedAt: now,
+      syncedAt: now,
+      metadata: _simpleProductMetadata,
+      syncStatus: ProductSyncStatus.synced,
+      isDirty: false,
+      pendingOperation: null,
+    );
+    await _database.upsertProduct(
+      model.toCompanion(
+        dirtyOverride: false,
+        pendingOperationOverride: null,
+        syncedAtOverride: now,
+        updatedAtOverride: now,
+      ),
+    );
+    return model;
   }
 }

@@ -128,8 +128,13 @@ class InventoryRepositoryImpl implements InventoryRepository {
   @override
   Future<void> recordPurchase(Purchase purchase) async {
     final model = PurchaseModel.fromEntity(purchase);
+    final stockKeys = <_StockKey>{
+      for (final line in purchase.lines)
+        _StockKey(productId: line.productId, locationId: purchase.locationId),
+    };
     await _localDataSource.recordPurchase(model);
     if (_remoteDataSource != null) {
+      await _pushStockSnapshots(stockKeys);
       try {
         await _remoteDataSource.savePurchase(model);
         await _localDataSource.markPurchaseSynced(
@@ -143,8 +148,13 @@ class InventoryRepositoryImpl implements InventoryRepository {
   @override
   Future<void> recordSale(Sale sale) async {
     final model = SaleModel.fromEntity(sale);
+    final stockKeys = <_StockKey>{
+      for (final line in sale.lines)
+        _StockKey(productId: line.productId, locationId: sale.storeId),
+    };
     await _localDataSource.recordSale(model);
     if (_remoteDataSource != null) {
+      await _pushStockSnapshots(stockKeys);
       try {
         await _remoteDataSource.saveSale(model);
         await _localDataSource.markSaleSynced(model.id, DateTime.now().toUtc());
@@ -155,8 +165,24 @@ class InventoryRepositoryImpl implements InventoryRepository {
   @override
   Future<void> recordTransfer(InventoryTransfer transfer) async {
     final model = TransferModel.fromEntity(transfer);
+    final stockKeys = <_StockKey>{};
+    for (final line in transfer.lines) {
+      stockKeys.add(
+        _StockKey(
+          productId: line.productId,
+          locationId: transfer.originLocationId,
+        ),
+      );
+      stockKeys.add(
+        _StockKey(
+          productId: line.productId,
+          locationId: transfer.destinationLocationId,
+        ),
+      );
+    }
     await _localDataSource.recordTransfer(model);
     if (_remoteDataSource != null) {
+      await _pushStockSnapshots(stockKeys);
       try {
         await _remoteDataSource.saveTransfer(model);
         await _localDataSource.markTransferSynced(
@@ -407,4 +433,55 @@ class InventoryRepositoryImpl implements InventoryRepository {
 
     return stockTimestamps;
   }
+
+  Future<void> _pushStockSnapshots(Set<_StockKey> keys) async {
+    final remote = _remoteDataSource;
+    if (remote == null || keys.isEmpty) {
+      return;
+    }
+    final payload = <Map<String, dynamic>>[];
+    for (final key in keys) {
+      final entry = await _localDataSource.fetchStockForSync(
+        productId: key.productId,
+        locationId: key.locationId,
+      );
+      if (entry == null) {
+        continue;
+      }
+      payload.add({
+        'product_id': entry.productId,
+        'location_id': entry.locationId,
+        'location_type': entry.locationType,
+        'quantity_on_hand': entry.quantityOnHand,
+        'quantity_reserved': entry.quantityReserved,
+        'updated_at': entry.updatedAt.toUtc().toIso8601String(),
+      });
+    }
+    if (payload.isEmpty) {
+      return;
+    }
+    try {
+      await remote.upsertInventoryStocks(payload);
+    } catch (error) {
+      print(error);
+    }
+  }
+}
+
+class _StockKey {
+  const _StockKey({required this.productId, required this.locationId});
+
+  final String productId;
+  final String locationId;
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is _StockKey &&
+        other.productId == productId &&
+        other.locationId == locationId;
+  }
+
+  @override
+  int get hashCode => Object.hash(productId, locationId);
 }

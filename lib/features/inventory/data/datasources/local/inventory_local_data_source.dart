@@ -784,6 +784,26 @@ SELECT COALESCE(SUM(total_amount), 0) AS total_amount
         .toList();
   }
 
+  Future<InventoryStockSyncEntry?> fetchStockForSync({
+    required String productId,
+    required String locationId,
+  }) async {
+    final row = await _database.fetchInventoryStock(productId, locationId);
+    if (row == null) {
+      return null;
+    }
+    return InventoryStockSyncEntry(
+      productId: row.productId,
+      locationId: row.locationId,
+      locationType: row.locationType,
+      quantityOnHand: row.quantityOnHand,
+      quantityReserved: row.quantityReserved,
+      updatedAt: (row.updatedAt ??
+              DateTime.fromMillisecondsSinceEpoch(0, isUtc: true))
+          .toUtc(),
+    );
+  }
+
   Future<List<PurchaseModel>> fetchUnsyncedPurchasesForSync() async {
     final headers = await _database.fetchUnsyncedPurchases();
     final result = <PurchaseModel>[];

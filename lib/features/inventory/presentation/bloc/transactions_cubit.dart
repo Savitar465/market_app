@@ -1,6 +1,5 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
-
 import '../../domain/entities/inventory_transaction.dart';
 import '../../domain/repositories/inventory_repository.dart';
 

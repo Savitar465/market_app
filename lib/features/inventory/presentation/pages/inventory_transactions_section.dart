@@ -18,6 +18,155 @@ class InventoryTransactionsSection extends StatefulWidget {
       _InventoryTransactionsSectionState();
 }
 
+class _SimpleProductDialog extends StatefulWidget {
+  const _SimpleProductDialog();
+
+  static Future<Product?> show(BuildContext context) {
+    return showDialog<Product>(
+      context: context,
+      builder: (_) => const _SimpleProductDialog(),
+    );
+  }
+
+  @override
+  State<_SimpleProductDialog> createState() => _SimpleProductDialogState();
+}
+
+class _SimpleProductDialogState extends State<_SimpleProductDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _unitController = TextEditingController();
+  final _priceController = TextEditingController(text: '0');
+  final _descriptionController = TextEditingController();
+  bool _isSaving = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _unitController.dispose();
+    _priceController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
+    setState(() {
+      _isSaving = true;
+      _error = null;
+    });
+    try {
+      final repository = context.read<ProductRepository>();
+      final product = await repository.createSimpleProduct(
+        name: _nameController.text,
+        price: double.tryParse(_priceController.text) ?? 0,
+        unit: _unitController.text.trim().isEmpty
+            ? null
+            : _unitController.text.trim(),
+        description: _descriptionController.text.trim().isEmpty
+            ? null
+            : _descriptionController.text.trim(),
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop(product);
+    } catch (error) {
+      setState(() {
+        _error = error.toString();
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Nuevo producto simple'),
+      content: Form(
+        key: _formKey,
+        child: SizedBox(
+          width: 360,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: _nameController,
+                decoration: const InputDecoration(labelText: 'Nombre'),
+                validator: (value) =>
+                    value == null || value.trim().isEmpty ? 'Ingrese un nombre' : null,
+              ),
+              TextFormField(
+                controller: _unitController,
+                decoration:
+                    const InputDecoration(labelText: 'Unidad (opcional)'),
+              ),
+              TextFormField(
+                controller: _priceController,
+                decoration: const InputDecoration(
+                  labelText: 'Precio base (opcional)',
+                ),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return null;
+                  }
+                  final parsed = double.tryParse(value);
+                  if (parsed == null || parsed < 0) {
+                    return 'Precio invalido';
+                  }
+                  return null;
+                },
+              ),
+              TextFormField(
+                controller: _descriptionController,
+                decoration: const InputDecoration(
+                  labelText: 'Descripcion (opcional)',
+                ),
+                maxLines: 2,
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  _error!,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: Theme.of(context).colorScheme.error),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          onPressed: _isSaving ? null : _save,
+          child: _isSaving
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Guardar'),
+        ),
+      ],
+    );
+  }
+}
+
 class _InventoryTransactionsSectionState
     extends State<InventoryTransactionsSection>
     with SingleTickerProviderStateMixin {
@@ -544,18 +693,53 @@ class _LineEditor extends StatefulWidget {
 
 class _LineEditorState extends State<_LineEditor> {
   final formKey = GlobalKey<FormState>();
-  final productIdController = TextEditingController();
-  final quantityController = TextEditingController();
-  final valueController = TextEditingController();
+  final TextEditingController _quantityController =
+      TextEditingController(text: '1');
+  final TextEditingController _valueController =
+      TextEditingController(text: '0');
   Product? selectedProduct;
+  String? _pendingSelectionId;
+
+  @override
+  void dispose() {
+    _quantityController.dispose();
+    _valueController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final repository = context.read<ProductRepository>();
-    return FutureBuilder<List<Product>>(
-      future: repository.watchProducts().first,
+    return StreamBuilder<List<Product>>(
+      stream: repository.watchProducts(),
       builder: (context, snapshot) {
         final products = snapshot.data ?? const <Product>[];
+        if (selectedProduct != null &&
+            products.every((product) => product.id != selectedProduct!.id)) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            setState(() {
+              selectedProduct = null;
+            });
+          });
+        } else if (_pendingSelectionId != null) {
+          for (final candidate in products) {
+            if (candidate.id == _pendingSelectionId) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted) return;
+                setState(() {
+                  selectedProduct = candidate;
+                  if (widget.isSale && candidate.price > 0) {
+                    _valueController.text =
+                        candidate.price.toStringAsFixed(2);
+                  }
+                  _pendingSelectionId = null;
+                });
+              });
+              break;
+            }
+          }
+        }
         return AlertDialog(
           title: const Text('Agregar detalle'),
           content: Form(
@@ -565,33 +749,57 @@ class _LineEditorState extends State<_LineEditor> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Autocomplete<Product>(
-                    optionsBuilder: (value) {
-                      if (value.text.isEmpty) return products;
-                      return products.where((product) =>
-                          product.name.toLowerCase().contains(value.text.toLowerCase()));
+                  DropdownButtonFormField<String>(
+                    value: selectedProduct?.id,
+                    decoration: const InputDecoration(labelText: 'Producto'),
+                    items: products
+                        .map(
+                          (product) => DropdownMenuItem<String>(
+                            value: product.id,
+                            child: Text(product.name),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      Product? product;
+                      if (value != null) {
+                        for (final candidate in products) {
+                          if (candidate.id == value) {
+                            product = candidate;
+                            break;
+                          }
+                        }
+                      }
+                      setState(() {
+                        selectedProduct = product;
+                        if (widget.isSale &&
+                            product != null &&
+                            product.price > 0) {
+                          _valueController.text =
+                              product.price.toStringAsFixed(2);
+                        }
+                      });
                     },
-                    displayStringForOption: (product) => product.name,
-                    onSelected: (product) {
-                      selectedProduct = product;
-                      productIdController.text = product.id;
-                    },
-                    fieldViewBuilder: (context, controller, focusNode, onSubmit) {
-                      return TextFormField(
-                        controller: controller,
-                        focusNode: focusNode,
-                        decoration: const InputDecoration(labelText: 'Producto'),
-                      );
-                    },
-                  ),
-                  TextFormField(
-                    controller: productIdController,
-                    decoration: const InputDecoration(labelText: 'ID de producto'),
                     validator: (value) =>
-                        value == null || value.isEmpty ? 'Ingrese el producto' : null,
+                        value == null || value.isEmpty ? 'Seleccione un producto' : null,
+                  ),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      onPressed: () async {
+                        final created = await _SimpleProductDialog.show(context);
+                        if (created != null) {
+                          setState(() {
+                            _pendingSelectionId = created.id;
+                          });
+                        }
+                      },
+                      icon: const Icon(Icons.add_box_outlined),
+                      label: const Text('Crear producto simple'),
+                    ),
                   ),
                   TextFormField(
-                    controller: quantityController,
+                    controller: _quantityController,
                     decoration: const InputDecoration(labelText: 'Cantidad'),
                     keyboardType: TextInputType.number,
                     validator: (value) {
@@ -603,7 +811,7 @@ class _LineEditorState extends State<_LineEditor> {
                     },
                   ),
                   TextFormField(
-                    controller: valueController,
+                    controller: _valueController,
                     decoration: InputDecoration(
                       labelText: widget.isSale ? 'Precio unitario' : 'Costo unitario',
                     ),
@@ -627,15 +835,23 @@ class _LineEditorState extends State<_LineEditor> {
             ),
             FilledButton(
               onPressed: () {
-                if (formKey.currentState?.validate() ?? false) {
-                  Navigator.of(context).pop(
-                    _LineDraft(
-                      productId: productIdController.text.trim(),
-                      product: selectedProduct,
-                      quantity: double.parse(quantityController.text),
-                      unitValue: double.parse(valueController.text),
-                    ),
-                  );
+                try {
+                  if (formKey.currentState?.validate() ?? false) {
+                    final product = selectedProduct;
+                    if (product == null) {
+                      return;
+                    }
+                    Navigator.of(context).pop(
+                      _LineDraft(
+                        productId: product.id,
+                        product: product,
+                        quantity: double.parse(_quantityController.text),
+                        unitValue: double.parse(_valueController.text),
+                      ),
+                    );
+                  }
+                } catch (error){
+                  print(error);
                 }
               },
               child: const Text('Agregar'),

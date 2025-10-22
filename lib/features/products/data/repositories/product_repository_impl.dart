@@ -114,6 +114,22 @@ class ProductRepositoryImpl implements ProductRepository {
   }
 
   @override
+  Future<Product> createSimpleProduct({
+    required String name,
+    double? price,
+    String? unit,
+    String? description,
+  }) async {
+    final model = await _localDataSource.createSimpleProduct(
+      name: name,
+      price: price ?? 0,
+      unit: unit,
+      description: description,
+    );
+    return model.toEntity();
+  }
+
+  @override
   Future<void> deleteProduct(String productId) async {
     final existing = await _localDataSource.getProduct(productId);
     if (existing == null) {
