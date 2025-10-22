@@ -376,10 +376,10 @@ class _SellerProductsPageState extends State<SellerProductsPage> {
   }
 
   String _formatPrice(Product product) {
-    final unit = product.unit?.trim();
+    final unit = product.price.toString().trim();
     final buffer = StringBuffer('USD ')
       ..write(product.price.toStringAsFixed(2));
-    if (unit != null && unit.isNotEmpty) {
+    if (unit.isNotEmpty) {
       buffer
         ..write(' / ')
         ..write(unit);

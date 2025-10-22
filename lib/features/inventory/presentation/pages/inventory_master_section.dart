@@ -773,9 +773,16 @@ class _LocationInventorySheetState extends State<_LocationInventorySheet> {
           .schema('market')
           .from('inventory_stocks')
           .select(
-            'product_id, quantity_on_hand, quantity_reserved, updated_at',
+            '''
+product_id,
+quantity_on_hand,
+quantity_reserved,
+updated_at,
+products(name, price)
+''',
           )
           .eq('location_id', widget.location.id)
+          .eq('location_type', widget.location.type.label)
           .order('updated_at', ascending: false);
 
       final rows = (response as List).cast<Map<String, dynamic>>();
