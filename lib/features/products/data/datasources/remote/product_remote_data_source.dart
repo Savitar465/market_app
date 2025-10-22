@@ -19,6 +19,7 @@ class ProductRemoteDataSource {
     try {
       final response =
           await builder.order('updated_at', ascending: false) as List<dynamic>;
+      print(response);
       return response
           .whereType<Map<String, dynamic>>()
           .map(ProductModel.fromRemote)

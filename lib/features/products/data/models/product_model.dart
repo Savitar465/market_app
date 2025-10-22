@@ -61,6 +61,26 @@ class ProductModel extends Product {
     );
   }
 
+  static Map<String, dynamic>? _decodeMetadata(dynamic value) {
+    if (value == null) {
+      return null;
+    }
+    if (value is Map<String, dynamic>) {
+      return value;
+    }
+    if (value is String && value.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(value);
+        if (decoded is Map<String, dynamic>) {
+          return decoded;
+        }
+      } catch (_) {
+        // Ignore malformed payloads; treat as absent metadata.
+      }
+    }
+    return null;
+  }
+
   factory ProductModel.fromRemote(Map<String, dynamic> map) {
     double parseDouble(dynamic value) {
       if (value is num) {
@@ -121,24 +141,7 @@ class ProductModel extends Product {
       return null;
     }
 
-    Map<String, dynamic>? parseMetadata(dynamic value) {
-      if (value is Map<String, dynamic>) {
-        return value;
-      }
-      if (value is String && value.isNotEmpty) {
-        try {
-          final decoded = jsonDecode(value);
-          if (decoded is Map<String, dynamic>) {
-            return decoded;
-          }
-        } catch (_) {
-          // Ignore malformed metadata payloads.
-        }
-      }
-      return null;
-    }
-
-    final metadata = parseMetadata(
+    final metadata = _decodeMetadata(
       map['metadata'] ?? map['metadata_json'] ?? map['metadataJson'],
     );
     final createdAt = parseDate(map['created_at'] ?? map['createdAt']);
@@ -182,9 +185,7 @@ class ProductModel extends Product {
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
       syncedAt: data.syncedAt,
-      metadata: data.metadataJson != null
-          ? jsonDecode(data.metadataJson!) as Map<String, dynamic>
-          : null,
+      metadata: _decodeMetadata(data.metadataJson),
       syncStatus: data.pendingOperation != null
           ? productSyncStatusFromLabel(data.pendingOperation)
           : ProductSyncStatus.synced,
@@ -226,19 +227,11 @@ class ProductModel extends Product {
   Map<String, dynamic> toRemoteMap() {
     return {
       'id': id,
-      'seller_id': sellerId,
       'name': name,
       'description': description,
-      'category': category,
-      'unit': unit,
       'price': price,
       'quantity': quantity,
-      'is_trending': isTrending,
-      'in_stock': inStock,
-      'rating': rating,
-      if (metadata != null) 'metadata': metadata,
       if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
-      if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
     };
   }
 

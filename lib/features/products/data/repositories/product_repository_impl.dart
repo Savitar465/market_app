@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:market_app/features/products/data/datasources/local/product_local_data_source.dart';
@@ -36,6 +37,7 @@ class ProductRepositoryImpl implements ProductRepository {
         remoteProducts,
         sellerId: sellerId,
       );
+      print("------ $remoteProducts");
     } on ProductRemoteException catch (error) {
       throw ProductFailure(error.message);
     } on SocketException {
@@ -126,6 +128,28 @@ class ProductRepositoryImpl implements ProductRepository {
       unit: unit,
       description: description,
     );
+    try {
+      final remote = await _remoteDataSource.upsertProduct(model);
+      await _localDataSource.markProductSynced(remote);
+      return remote.toEntity();
+    } on ProductRemoteException catch (error, stackTrace) {
+      developer.log(
+        'Failed to sync simple product',
+        name: 'ProductRepositoryImpl',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    } on SocketException {
+      developer.log(
+        'Network unavailable while syncing simple product',
+        name: 'ProductRepositoryImpl',
+      );
+    } on TimeoutException {
+      developer.log(
+        'Timeout while syncing simple product',
+        name: 'ProductRepositoryImpl',
+      );
+    }
     return model.toEntity();
   }
 

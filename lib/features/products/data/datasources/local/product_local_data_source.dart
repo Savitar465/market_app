@@ -107,6 +107,7 @@ class ProductLocalDataSource {
     final dirtyIds = await _database.fetchDirtyProductIds();
     final now = DateTime.now().toUtc();
 
+    print(dirtyIds);
     final entries = remoteProducts
         .where((product) => !dirtyIds.contains(product.id))
         .map(
@@ -185,17 +186,17 @@ class ProductLocalDataSource {
       rating: null,
       createdAt: now,
       updatedAt: now,
-      syncedAt: now,
+      syncedAt: null,
       metadata: _simpleProductMetadata,
-      syncStatus: ProductSyncStatus.synced,
-      isDirty: false,
-      pendingOperation: null,
+      syncStatus: ProductSyncStatus.pendingUpsert,
+      isDirty: true,
+      pendingOperation: ProductSyncStatus.pendingUpsert.label,
     );
     await _database.upsertProduct(
       model.toCompanion(
-        dirtyOverride: false,
-        pendingOperationOverride: null,
-        syncedAtOverride: now,
+        dirtyOverride: true,
+        pendingOperationOverride: ProductSyncStatus.pendingUpsert.label,
+        syncedAtOverride: null,
         updatedAtOverride: now,
       ),
     );

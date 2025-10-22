@@ -264,6 +264,23 @@ class InventoryRepositoryImpl implements InventoryRepository {
     if (_remoteDataSource == null) return;
 
     final remote = _remoteDataSource;
+    final productRepository = _productRepository;
+
+    if (productRepository != null) {
+      try {
+        await productRepository.syncProducts();
+      } catch (error) {
+        print(error);
+      }
+    }
+
+    if (productRepository != null) {
+      try {
+        await productRepository.syncPendingOperations();
+      } catch (error) {
+        print(error);
+      }
+    }
 
     final unsyncedLocations = await _localDataSource
         .fetchUnsyncedLocationsForSync();
@@ -277,6 +294,8 @@ class InventoryRepositoryImpl implements InventoryRepository {
       pendingLocationIds: unsyncedLocations.map((loc) => loc.id).toSet(),
       pendingEmployeeIds: unsyncedEmployees.map((emp) => emp.id).toSet(),
     );
+
+
 
     for (final location in unsyncedLocations) {
       try {
@@ -313,6 +332,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
     }
 
     final stocksForSync = await _localDataSource.fetchStocksForSync();
+    print(stocksForSync);
     final stockPayload = <Map<String, dynamic>>[];
     for (final stock in stocksForSync) {
       final key = '${stock.productId}|${stock.locationId}';
@@ -333,20 +353,6 @@ class InventoryRepositoryImpl implements InventoryRepository {
     if (stockPayload.isNotEmpty) {
       try {
         await remote.upsertInventoryStocks(stockPayload);
-      } catch (error) {
-        print(error);
-      }
-    }
-
-    final productRepository = _productRepository;
-    if (productRepository != null) {
-      try {
-        await productRepository.syncPendingOperations();
-      } catch (error) {
-        print(error);
-      }
-      try {
-        await productRepository.syncProducts();
       } catch (error) {
         print(error);
       }
