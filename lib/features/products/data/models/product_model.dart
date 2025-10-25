@@ -149,23 +149,11 @@ class ProductModel extends Product {
 
     return ProductModel(
       id: (map['id'] ?? map['product_id']).toString(),
-      sellerId: (map['seller_id'] ?? map['sellerId']).toString(),
       name: (map['name'] ?? 'Untitled product').toString(),
       description: map['description']?.toString(),
-      category: map['category']?.toString(),
-      unit: map['unit']?.toString(),
       price: parseDouble(map['price']),
       quantity: parseInt(map['quantity']),
-      isTrending: parseBool(map['is_trending']),
-      inStock: parseBool(map['in_stock'], fallback: true),
-      rating: map.containsKey('rating') ? parseDouble(map['rating']) : null,
-      createdAt: createdAt,
-      updatedAt: updatedAt,
-      syncedAt: updatedAt ?? DateTime.now().toUtc(),
-      metadata: metadata,
-      syncStatus: ProductSyncStatus.synced,
-      isDirty: false,
-      pendingOperation: null,
+      updatedAt: updatedAt, sellerId: '',
     );
   }
 

@@ -614,6 +614,7 @@ SELECT COALESCE(SUM(total_amount), 0) AS total_amount
       createdBy: createdBy,
       occurredAt: occurredAt ?? DateTime.now().toUtc(),
       notes: notes,
+      syncedAt: null,
     );
     return _database
         .into(_database.inventoryMovementsTable)
@@ -762,6 +763,15 @@ SELECT COALESCE(SUM(total_amount), 0) AS total_amount
 
   Future<void> markEmployeeSynced(String id, DateTime ts) {
     return _database.markEmployeeSynced(id, ts);
+  }
+
+  Future<List<InventoryMovementModel>> fetchUnsyncedMovementsForSync() async {
+    final rows = await _database.fetchUnsyncedMovements();
+    return rows.map(InventoryMovementModel.fromTable).toList();
+  }
+
+  Future<void> markMovementSynced(String id, DateTime ts) {
+    return _database.markMovementSynced(id, ts);
   }
 
   Future<List<InventoryStockSyncEntry>> fetchStocksForSync() async {

@@ -4446,6 +4446,17 @@ class $InventoryMovementsTableTable extends InventoryMovementsTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _syncedAtMeta = const VerificationMeta(
+    'syncedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> syncedAt = GeneratedColumn<DateTime>(
+    'synced_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -4459,6 +4470,7 @@ class $InventoryMovementsTableTable extends InventoryMovementsTable
     createdBy,
     occurredAt,
     notes,
+    syncedAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -4557,6 +4569,12 @@ class $InventoryMovementsTableTable extends InventoryMovementsTable
         notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
       );
     }
+    if (data.containsKey('synced_at')) {
+      context.handle(
+        _syncedAtMeta,
+        syncedAt.isAcceptableOrUnknown(data['synced_at']!, _syncedAtMeta),
+      );
+    }
     return context;
   }
 
@@ -4613,6 +4631,10 @@ class $InventoryMovementsTableTable extends InventoryMovementsTable
         DriftSqlType.string,
         data['${effectivePrefix}notes'],
       ),
+      syncedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}synced_at'],
+      ),
     );
   }
 
@@ -4635,6 +4657,7 @@ class InventoryMovementsTableData extends DataClass
   final String? createdBy;
   final DateTime occurredAt;
   final String? notes;
+  final DateTime? syncedAt;
   const InventoryMovementsTableData({
     required this.id,
     required this.productId,
@@ -4647,6 +4670,7 @@ class InventoryMovementsTableData extends DataClass
     this.createdBy,
     required this.occurredAt,
     this.notes,
+    this.syncedAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -4673,6 +4697,9 @@ class InventoryMovementsTableData extends DataClass
     map['occurred_at'] = Variable<DateTime>(occurredAt);
     if (!nullToAbsent || notes != null) {
       map['notes'] = Variable<String>(notes);
+    }
+    if (!nullToAbsent || syncedAt != null) {
+      map['synced_at'] = Variable<DateTime>(syncedAt);
     }
     return map;
   }
@@ -4702,6 +4729,9 @@ class InventoryMovementsTableData extends DataClass
       notes: notes == null && nullToAbsent
           ? const Value.absent()
           : Value(notes),
+      syncedAt: syncedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncedAt),
     );
   }
 
@@ -4722,6 +4752,7 @@ class InventoryMovementsTableData extends DataClass
       createdBy: serializer.fromJson<String?>(json['createdBy']),
       occurredAt: serializer.fromJson<DateTime>(json['occurredAt']),
       notes: serializer.fromJson<String?>(json['notes']),
+      syncedAt: serializer.fromJson<DateTime?>(json['syncedAt']),
     );
   }
   @override
@@ -4739,6 +4770,7 @@ class InventoryMovementsTableData extends DataClass
       'createdBy': serializer.toJson<String?>(createdBy),
       'occurredAt': serializer.toJson<DateTime>(occurredAt),
       'notes': serializer.toJson<String?>(notes),
+      'syncedAt': serializer.toJson<DateTime?>(syncedAt),
     };
   }
 
@@ -4754,6 +4786,7 @@ class InventoryMovementsTableData extends DataClass
     Value<String?> createdBy = const Value.absent(),
     DateTime? occurredAt,
     Value<String?> notes = const Value.absent(),
+    Value<DateTime?> syncedAt = const Value.absent(),
   }) => InventoryMovementsTableData(
     id: id ?? this.id,
     productId: productId ?? this.productId,
@@ -4768,6 +4801,7 @@ class InventoryMovementsTableData extends DataClass
     createdBy: createdBy.present ? createdBy.value : this.createdBy,
     occurredAt: occurredAt ?? this.occurredAt,
     notes: notes.present ? notes.value : this.notes,
+    syncedAt: syncedAt.present ? syncedAt.value : this.syncedAt,
   );
   InventoryMovementsTableData copyWithCompanion(
     InventoryMovementsTableCompanion data,
@@ -4796,6 +4830,7 @@ class InventoryMovementsTableData extends DataClass
           ? data.occurredAt.value
           : this.occurredAt,
       notes: data.notes.present ? data.notes.value : this.notes,
+      syncedAt: data.syncedAt.present ? data.syncedAt.value : this.syncedAt,
     );
   }
 
@@ -4812,7 +4847,8 @@ class InventoryMovementsTableData extends DataClass
           ..write('referenceId: $referenceId, ')
           ..write('createdBy: $createdBy, ')
           ..write('occurredAt: $occurredAt, ')
-          ..write('notes: $notes')
+          ..write('notes: $notes, ')
+          ..write('syncedAt: $syncedAt')
           ..write(')'))
         .toString();
   }
@@ -4830,6 +4866,7 @@ class InventoryMovementsTableData extends DataClass
     createdBy,
     occurredAt,
     notes,
+    syncedAt,
   );
   @override
   bool operator ==(Object other) =>
@@ -4845,7 +4882,8 @@ class InventoryMovementsTableData extends DataClass
           other.referenceId == this.referenceId &&
           other.createdBy == this.createdBy &&
           other.occurredAt == this.occurredAt &&
-          other.notes == this.notes);
+          other.notes == this.notes &&
+          other.syncedAt == this.syncedAt);
 }
 
 class InventoryMovementsTableCompanion
@@ -4861,6 +4899,7 @@ class InventoryMovementsTableCompanion
   final Value<String?> createdBy;
   final Value<DateTime> occurredAt;
   final Value<String?> notes;
+  final Value<DateTime?> syncedAt;
   final Value<int> rowid;
   const InventoryMovementsTableCompanion({
     this.id = const Value.absent(),
@@ -4874,6 +4913,7 @@ class InventoryMovementsTableCompanion
     this.createdBy = const Value.absent(),
     this.occurredAt = const Value.absent(),
     this.notes = const Value.absent(),
+    this.syncedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   InventoryMovementsTableCompanion.insert({
@@ -4888,6 +4928,7 @@ class InventoryMovementsTableCompanion
     this.createdBy = const Value.absent(),
     required DateTime occurredAt,
     this.notes = const Value.absent(),
+    this.syncedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        productId = Value(productId),
@@ -4906,6 +4947,7 @@ class InventoryMovementsTableCompanion
     Expression<String>? createdBy,
     Expression<DateTime>? occurredAt,
     Expression<String>? notes,
+    Expression<DateTime>? syncedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -4920,6 +4962,7 @@ class InventoryMovementsTableCompanion
       if (createdBy != null) 'created_by': createdBy,
       if (occurredAt != null) 'occurred_at': occurredAt,
       if (notes != null) 'notes': notes,
+      if (syncedAt != null) 'synced_at': syncedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -4936,6 +4979,7 @@ class InventoryMovementsTableCompanion
     Value<String?>? createdBy,
     Value<DateTime>? occurredAt,
     Value<String?>? notes,
+    Value<DateTime?>? syncedAt,
     Value<int>? rowid,
   }) {
     return InventoryMovementsTableCompanion(
@@ -4950,6 +4994,7 @@ class InventoryMovementsTableCompanion
       createdBy: createdBy ?? this.createdBy,
       occurredAt: occurredAt ?? this.occurredAt,
       notes: notes ?? this.notes,
+      syncedAt: syncedAt ?? this.syncedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -4990,6 +5035,9 @@ class InventoryMovementsTableCompanion
     if (notes.present) {
       map['notes'] = Variable<String>(notes.value);
     }
+    if (syncedAt.present) {
+      map['synced_at'] = Variable<DateTime>(syncedAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -5010,6 +5058,7 @@ class InventoryMovementsTableCompanion
           ..write('createdBy: $createdBy, ')
           ..write('occurredAt: $occurredAt, ')
           ..write('notes: $notes, ')
+          ..write('syncedAt: $syncedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -10735,6 +10784,7 @@ typedef $$InventoryMovementsTableTableCreateCompanionBuilder =
       Value<String?> createdBy,
       required DateTime occurredAt,
       Value<String?> notes,
+      Value<DateTime?> syncedAt,
       Value<int> rowid,
     });
 typedef $$InventoryMovementsTableTableUpdateCompanionBuilder =
@@ -10750,6 +10800,7 @@ typedef $$InventoryMovementsTableTableUpdateCompanionBuilder =
       Value<String?> createdBy,
       Value<DateTime> occurredAt,
       Value<String?> notes,
+      Value<DateTime?> syncedAt,
       Value<int> rowid,
     });
 
@@ -10814,6 +10865,11 @@ class $$InventoryMovementsTableTableFilterComposer
 
   ColumnFilters<String> get notes => $composableBuilder(
     column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -10881,6 +10937,11 @@ class $$InventoryMovementsTableTableOrderingComposer
     column: $table.notes,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$InventoryMovementsTableTableAnnotationComposer
@@ -10936,6 +10997,9 @@ class $$InventoryMovementsTableTableAnnotationComposer
 
   GeneratedColumn<String> get notes =>
       $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get syncedAt =>
+      $composableBuilder(column: $table.syncedAt, builder: (column) => column);
 }
 
 class $$InventoryMovementsTableTableTableManager
@@ -10995,6 +11059,7 @@ class $$InventoryMovementsTableTableTableManager
                 Value<String?> createdBy = const Value.absent(),
                 Value<DateTime> occurredAt = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
+                Value<DateTime?> syncedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => InventoryMovementsTableCompanion(
                 id: id,
@@ -11008,6 +11073,7 @@ class $$InventoryMovementsTableTableTableManager
                 createdBy: createdBy,
                 occurredAt: occurredAt,
                 notes: notes,
+                syncedAt: syncedAt,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -11023,6 +11089,7 @@ class $$InventoryMovementsTableTableTableManager
                 Value<String?> createdBy = const Value.absent(),
                 required DateTime occurredAt,
                 Value<String?> notes = const Value.absent(),
+                Value<DateTime?> syncedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => InventoryMovementsTableCompanion.insert(
                 id: id,
@@ -11036,6 +11103,7 @@ class $$InventoryMovementsTableTableTableManager
                 createdBy: createdBy,
                 occurredAt: occurredAt,
                 notes: notes,
+                syncedAt: syncedAt,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

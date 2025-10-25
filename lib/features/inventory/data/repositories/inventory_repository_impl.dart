@@ -288,6 +288,8 @@ class InventoryRepositoryImpl implements InventoryRepository {
         .fetchUnsyncedEmployeesForSync();
     final unsyncedPurchases = await _localDataSource
         .fetchUnsyncedPurchasesForSync();
+    final unsyncedMovements = await _localDataSource
+        .fetchUnsyncedMovementsForSync();
 
     final remoteStockTimestamps = await _pullRemoteUpdates(
       remote: remote,
@@ -331,6 +333,18 @@ class InventoryRepositoryImpl implements InventoryRepository {
       }
     }
 
+    if (unsyncedMovements.isNotEmpty) {
+      try {
+        await remote.upsertInventoryMovements(unsyncedMovements);
+        final syncedAt = DateTime.now().toUtc();
+        for (final movement in unsyncedMovements) {
+          await _localDataSource.markMovementSynced(movement.id, syncedAt);
+        }
+      } catch (error) {
+        print(error);
+      }
+    }
+
     final stocksForSync = await _localDataSource.fetchStocksForSync();
     print(stocksForSync);
     final stockPayload = <Map<String, dynamic>>[];
@@ -358,23 +372,23 @@ class InventoryRepositoryImpl implements InventoryRepository {
       }
     }
 
-    // // Sales
-    // final unsyncedSales = await _localDataSource.fetchUnsyncedSalesForSync();
-    // for (final sale in unsyncedSales) {
-    //   try {
-    //     await remote.saveSale(sale);
-    //     await _localDataSource.markSaleSynced(sale.id, DateTime.now().toUtc());
-    //   } catch (_) {}
-    // }
-    //
-    // // Transfers
-    // final unsyncedTransfers = await _localDataSource.fetchUnsyncedTransfersForSync();
-    // for (final transfer in unsyncedTransfers) {
-    //   try {
-    //     await remote.saveTransfer(transfer);
-    //     await _localDataSource.markTransferSynced(transfer.id, DateTime.now().toUtc());
-    //   } catch (_) {}
-    // }
+    // Sales
+    final unsyncedSales = await _localDataSource.fetchUnsyncedSalesForSync();
+    for (final sale in unsyncedSales) {
+      try {
+        await remote.saveSale(sale);
+        await _localDataSource.markSaleSynced(sale.id, DateTime.now().toUtc());
+      } catch (_) {}
+    }
+
+    // Transfers
+    final unsyncedTransfers = await _localDataSource.fetchUnsyncedTransfersForSync();
+    for (final transfer in unsyncedTransfers) {
+      try {
+        await remote.saveTransfer(transfer);
+        await _localDataSource.markTransferSynced(transfer.id, DateTime.now().toUtc());
+      } catch (_) {}
+    }
   }
 
   Future<Map<String, DateTime?>> _pullRemoteUpdates({

@@ -14,6 +14,7 @@ class InventoryRemoteDataSource {
   static const String _locationsTable = 'inventory_locations';
   static const String _employeesTable = 'employees';
   static const String _inventoryStocksTable = 'inventory_stocks';
+  static const String _inventoryMovementsTable = 'inventory_movements';
   static const String _purchaseHeadersTable = 'purchase_headers';
   static const String _purchaseItemsTable = 'purchase_items';
   static const String _salesHeadersTable = 'sales_headers';
@@ -75,6 +76,33 @@ class InventoryRemoteDataSource {
           stocks,
           onConflict: 'product_id,location_id',
         );
+  }
+
+  Future<void> upsertInventoryMovements(
+    List<InventoryMovementModel> movements,
+  ) async {
+    if (movements.isEmpty) {
+      return;
+    }
+    final payload = movements.map((movement) {
+      return {
+        'id': movement.id,
+        'product_id': movement.productId,
+        'location_id': movement.locationId,
+        'location_type': movement.locationType,
+        'quantity': movement.quantity,
+        'movement_type': movement.movementType,
+        'reference_type': movement.referenceType,
+        'reference_id': movement.referenceId,
+        'created_by': movement.createdBy,
+        'occurred_at': movement.occurredAt.toIso8601String(),
+        'notes': movement.notes,
+      };
+    }).toList();
+    await _client
+        .schema(_schema)
+        .from(_inventoryMovementsTable)
+        .upsert(payload, onConflict: 'id');
   }
 
   Future<void> upsertLocation(InventoryLocationModel model) async {

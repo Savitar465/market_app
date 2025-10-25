@@ -396,6 +396,7 @@ class InventoryMovementModel extends Equatable {
     this.createdBy,
     required this.occurredAt,
     this.notes,
+    this.syncedAt,
   });
 
   final String id;
@@ -409,6 +410,7 @@ class InventoryMovementModel extends Equatable {
   final String? createdBy;
   final DateTime occurredAt;
   final String? notes;
+  final DateTime? syncedAt;
 
   InventoryMovement toEntity() => InventoryMovement(
         id: id,
@@ -438,6 +440,7 @@ class InventoryMovementModel extends Equatable {
       createdBy: data.createdBy,
       occurredAt: data.occurredAt,
       notes: data.notes,
+      syncedAt: data.syncedAt,
     );
   }
 
@@ -454,6 +457,7 @@ class InventoryMovementModel extends Equatable {
       createdBy: Value(createdBy),
       occurredAt: Value(occurredAt),
       notes: Value(notes),
+      syncedAt: Value(syncedAt),
     );
   }
 
@@ -470,5 +474,6 @@ class InventoryMovementModel extends Equatable {
         createdBy,
         occurredAt,
         notes,
+        syncedAt,
       ];
 }

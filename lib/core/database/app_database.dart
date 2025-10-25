@@ -129,6 +129,7 @@ class InventoryMovementsTable extends Table {
   TextColumn get createdBy => text().nullable()();
   DateTimeColumn get occurredAt => dateTime()();
   TextColumn get notes => text().nullable()();
+  DateTimeColumn get syncedAt => dateTime().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
@@ -242,7 +243,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -286,6 +287,12 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 8) {
         await m.addColumn(employeesTable, employeesTable.authUserId);
+      }
+      if (from < 9) {
+        await m.addColumn(
+          inventoryMovementsTable,
+          inventoryMovementsTable.syncedAt,
+        );
       }
     },
   );
@@ -541,6 +548,17 @@ class AppDatabase extends _$AppDatabase {
       query.where((tbl) => tbl.locationId.equals(locationId));
     }
     return query.watch();
+  }
+
+  Future<List<InventoryMovementsTableData>> fetchUnsyncedMovements() {
+    return (select(inventoryMovementsTable)
+          ..where((tbl) => tbl.syncedAt.isNull()))
+        .get();
+  }
+
+  Future<void> markMovementSynced(String id, DateTime ts) {
+    return (update(inventoryMovementsTable)..where((t) => t.id.equals(id)))
+        .write(InventoryMovementsTableCompanion(syncedAt: Value(ts)));
   }
 
   // --- Sync helpers ---
